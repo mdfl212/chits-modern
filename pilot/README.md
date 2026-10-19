@@ -28,7 +28,7 @@ In a second terminal, use the same database path and create an account:
 export CHITS_DB_PATH="$HOME/.local/share/chits-pilot/chits.sqlite"
 php pilot/bin/create-user.php demo-admin admin
 ```
-Open http://127.0.0.1:8080. Use fictitious data only. PHP's built-in server is for local development and must not be exposed to a network.
+Open http://127.0.0.1:8080/ for the original CHITS-inspired dashboard. Choose **Patient Care Pilot** in its sidebar to open the persistent workflow at `/pilot/`, or open http://127.0.0.1:8080/pilot/ directly. The pilot includes a link back to the dashboard. Use fictitious data only. PHP's built-in server is for local development and must not be exposed to a network.
 
 ## API
 - GET /api/csrf
