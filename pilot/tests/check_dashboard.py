@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 
 html = Path("index.html").read_text(encoding="utf-8")
-scripts = re.findall(r"<script\\b(?![^>]*\\bsrc=)[^>]*>(.*?)</script\\s*>", html, flags=re.I | re.S)
+scripts = re.findall(r"<script\b(?![^>]*\bsrc=)[^>]*>(.*?)</script\s*>", html, flags=re.I | re.S)
 if not scripts:
     raise SystemExit("FAIL: no inline scripts found in index.html")
 
