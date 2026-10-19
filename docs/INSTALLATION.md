@@ -73,7 +73,7 @@ The PHP built-in server is for local development only. It must not be exposed to
 
 1. Open the pilot while signed out. The patient API should require authentication.
 2. Sign in with the CLI-provisioned account.
-3. Register a fictional patient.
+3. Create a fictional household, then register a fictional patient and optionally link them to that household. Open the household registry to verify the linked member.
 4. Open the patient's record and create a fictional consultation.
 5. Refresh the page and confirm the patient and consultation remain stored.
 6. Try a future date, missing required fields, and out-of-range vital signs; confirm the application rejects invalid input.
@@ -101,6 +101,6 @@ python3 pilot/tests/smoke.py
 
 ## Limitations
 
-The pilot is a development scaffold. It does not yet include rate limiting, MFA, production-grade audit-log protection, encryption at rest, automated encrypted backups, recovery drills, formal migration versioning, duplicate patient merge workflows, clinical signatures/amendments, validated official reporting, or independent security testing.
+The pilot is a development scaffold. It does not yet include household editing/reassignment, rate limiting, MFA, production-grade audit-log protection, encryption at rest, automated encrypted backups, recovery drills, formal migration versioning, duplicate patient merge workflows, clinical signatures/amendments, validated official reporting, or independent security testing.
 
 Do not use real patient data or deploy this for live clinical service until clinical, privacy, security, operational, and legal requirements have been assessed and addressed by the responsible organization.
