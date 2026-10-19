@@ -1,0 +1,48 @@
+name: Pilot checks
+
+on:
+  pull_request:
+    paths:
+      - "pilot/**"
+      - ".github/workflows/pilot-checks.yml"
+  push:
+    branches:
+      - main
+      - "feat/**"
+    paths:
+      - "pilot/**"
+      - ".github/workflows/pilot-checks.yml"
+
+jobs:
+  validate-and-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, pdo_sqlite
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: PHP syntax checks
+        run: |
+          find pilot -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: JavaScript syntax check
+        run: node --check pilot/public/app.js
+      - name: Start isolated local pilot and run smoke test
+        env:
+          CHITS_DB_PATH: /tmp/chits-pilot-ci.sqlite
+        run: |
+          php -r 'require "pilot/src/bootstrap.php"; $p=db(); $s=$p->prepare("INSERT INTO users(username,password_hash,role) VALUES (:u,:p,:r)"); $s->execute([":u"=>"ci-user",":p"=>password_hash("ci-test-password-12345", PASSWORD_DEFAULT),":r"=>"admin"]);'
+          php -S 127.0.0.1:8080 -t pilot/public pilot/router.php >/tmp/chits-pilot-server.log 2>&1 &
+          echo $! > /tmp/chits-pilot-server.pid
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8080/ >/dev/null; then break; fi
+            sleep 1
+          done
+          python3 pilot/tests/smoke.py
+      - name: Show server log on failure
+        if: failure()
+        run: cat /tmp/chits-pilot-server.log || true
