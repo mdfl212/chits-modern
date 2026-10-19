@@ -35,8 +35,10 @@ jobs:
       - name: PHP syntax checks
         run: |
           find pilot -name '*.php' -print0 | xargs -0 -n1 php -l
-      - name: JavaScript syntax check
-        run: node --check pilot/public/app.js
+      - name: JavaScript syntax checks
+        run: |
+          node --check pilot/public/app.js
+          python3 pilot/tests/check_dashboard.py
       - name: Start isolated local pilot and run smoke test
         env:
           CHITS_DB_PATH: /tmp/chits-pilot-ci.sqlite
@@ -48,7 +50,7 @@ jobs:
             if curl --silent --fail http://127.0.0.1:8080/ >/dev/null; then break; fi
             sleep 1
           done
-          curl --silent --fail http://127.0.0.1:8080/ | grep -q 'Patient Care Pilot'
+          curl --silent --fail http://127.0.0.1:8080/ | grep -q 'Patient Care Workspace'
           curl --silent --fail http://127.0.0.1:8080/pilot/ | grep -q 'Patient care workspace'
           curl --silent --fail http://127.0.0.1:8080/pilot/app.js | grep -q 'function loadPatients'
           curl --silent --fail http://127.0.0.1:8080/pilot/styles.css | grep -q 'topbar'
