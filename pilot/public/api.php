@@ -41,6 +41,15 @@ if (preg_match('#^/api/households/([a-f0-9-]{36})$#i',$path,$m)&&$method==='PATC
  catch (PDOException $e) { if (str_contains(strtolower($e->getMessage()),'unique')) json_response(['error'=>'That household code is already in use. Choose a different code.'],409); error_log('CHITS household update failed: '.$e->getMessage()); json_response(['error'=>'Household could not be updated. No success was confirmed.'],500); }
  json_response(['household'=>['id'=>$id,'household_code'=>$code,'household_head'=>$head,'barangay'=>$barangay,'address'=>$address]]);
 }
+if (preg_match('#^/api/households/([a-f0-9-]{36})$#i',$path,$m)&&$method==='PATCH') {
+ require_role($u,['admin','provider','encoder']); require_csrf(); $d=request_json(); $id=$m[1]; $pdo=db();
+ $s=$pdo->prepare('SELECT id FROM households WHERE id=:id'); $s->execute([':id'=>$id]); if (!$s->fetch()) json_response(['error'=>'Household not found.'],404);
+ $head=required_string($d,'householdHead',160,'Household head'); $barangay=required_string($d,'barangay',120,'Barangay'); $code=required_string($d,'householdCode',40,'Household code'); $address=optional_string($d,'address',250,'Address')??'';
+ $s=$pdo->prepare('SELECT COUNT(*) FROM patients WHERE household_id=:id AND lower(barangay)<>lower(:barangay)'); $s->execute([':id'=>$id,':barangay'=>$barangay]); if ((int)$s->fetchColumn()>0) json_response(['error'=>'Cannot change household barangay while linked patients have a different barangay. Reassign or update those patients first.'],422);
+ try { $s=$pdo->prepare('UPDATE households SET household_code=:code,household_head=:head,barangay=:barangay,address=:address WHERE id=:id'); $s->execute([':code'=>$code,':head'=>$head,':barangay'=>$barangay,':address'=>$address,':id'=>$id]); audit($pdo,(int)$u['id'],'update','household',$id); }
+ catch (PDOException $e) { if (str_contains(strtolower($e->getMessage()),'unique')) json_response(['error'=>'That household code is already in use. Choose a different code.'],409); error_log('CHITS household update failed: '.$e->getMessage()); json_response(['error'=>'Household could not be updated. No success was confirmed.'],500); }
+ json_response(['household'=>['id'=>$id,'household_code'=>$code,'household_head'=>$head,'barangay'=>$barangay,'address'=>$address]]);
+}
 if (preg_match('#^/api/households/([a-f0-9-]{36})$#i',$path,$m)&&$method==='GET') {
  $s=db()->prepare('SELECT id,household_code,household_head,barangay,address,created_at FROM households WHERE id=:id'); $s->execute([':id'=>$m[1]]); $h=$s->fetch(); if (!$h) json_response(['error'=>'Household not found.'],404);
  $s=db()->prepare('SELECT id,first_name,last_name,date_of_birth,sex,barangay FROM patients WHERE household_id=:id ORDER BY last_name,first_name'); $s->execute([':id'=>$m[1]]); json_response(['household'=>$h,'members'=>$s->fetchAll()]);
@@ -61,6 +70,15 @@ if ($method==='POST'&&$path==='/api/patients') {
  try { $s=$pdo->prepare('INSERT INTO patients(id,first_name,last_name,date_of_birth,sex,phone,barangay,household_id,created_by) VALUES (:id,:f,:l,:dob,:sex,:phone,:barangay,:household,:actor)'); $s->execute([':id'=>$id,':f'=>$first,':l'=>$last,':dob'=>$dob,':sex'=>$sex,':phone'=>$phone,':barangay'=>$barangay,':household'=>$householdId,':actor'=>$u['id']]); audit($pdo,(int)$u['id'],'create','patient',$id); }
  catch (Throwable $e) { error_log('CHITS patient create failed: '.$e->getMessage()); json_response(['error'=>'Patient could not be saved. No record was confirmed.'],500); }
  $s=$pdo->prepare('SELECT id,first_name,last_name,date_of_birth,sex,phone,barangay,household_id,created_at FROM patients WHERE id=:id'); $s->execute([':id'=>$id]); json_response(['patient'=>$s->fetch()],201);
+}
+if (preg_match('#^/api/patients/([a-f0-9-]{36})/household$#i',$path,$m)&&$method==='PATCH') {
+ require_role($u,['admin','provider','encoder']); require_csrf(); $d=request_json(); $id=$m[1]; $pdo=db();
+ $s=$pdo->prepare('SELECT id,barangay FROM patients WHERE id=:id'); $s->execute([':id'=>$id]); $patient=$s->fetch(); if (!$patient) json_response(['error'=>'Patient not found.'],404);
+ $householdId=optional_string($d,'householdId',36,'Household');
+ if ($householdId!==null) { $s=$pdo->prepare('SELECT id,barangay FROM households WHERE id=:id'); $s->execute([':id'=>$householdId]); $h=$s->fetch(); if (!$h) json_response(['error'=>'Selected household was not found.'],422); if (mb_strtolower($h['barangay'])!==mb_strtolower($patient['barangay'])) json_response(['error'=>'Patient barangay must match the selected household barangay.'],422); }
+ try { $s=$pdo->prepare('UPDATE patients SET household_id=:household,updated_at=CURRENT_TIMESTAMP WHERE id=:id'); $s->execute([':household'=>$householdId,':id'=>$id]); audit($pdo,(int)$u['id'],'update','patient_household',$id); }
+ catch (Throwable $e) { error_log('CHITS patient household update failed: '.$e->getMessage()); json_response(['error'=>'Patient household link could not be updated. No success was confirmed.'],500); }
+ json_response(['patient'=>['id'=>$id,'household_id'=>$householdId]]);
 }
 if (preg_match('#^/api/patients/([a-f0-9-]{36})/household$#i',$path,$m)&&$method==='PATCH') {
  require_role($u,['admin','provider','encoder']); require_csrf(); $d=request_json(); $id=$m[1]; $pdo=db();
