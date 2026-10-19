@@ -1,125 +1,129 @@
-# CHITS 2.0 — Community Health Information Tracking System
+# CHITS Modern — Community Health Information Tracking System
 
-A modern reverse-engineering of the original CHITS system by Herman Tolentino MD,
-developed for Philippine Rural Health Units (RHU) and barangay health centers.
+A modernization/reverse-engineering project inspired by the original Community Health Information Tracking System (CHITS) by Herman Tolentino MD, for learning, interface development, and community-health workflow prototyping.
 
----
+> **Safety notice:** This repository is not a production electronic health record. Do not enter real patient information or use it for clinical decisions, official RHU reporting, or live service delivery. Use synthetic data only until formal clinical, privacy, security, and operational reviews have been completed.
 
-## What this is
+## Project status
 
-CHITS 2.0 is a single-file, offline-capable HTML5 web app that replaces the original
-PHP 4 / mysql_* / JpGraph stack with:
+The repository now has a shared local PHP entry point linking the original demo UI to the patient-to-consultation pilot. This is navigation and local-server integration, not a full backend conversion of all legacy modules.
 
-| Original (2004–2015)          | Modern (2.0)                      |
-|-------------------------------|-----------------------------------|
-| PHP 4 with `mysql_connect()`  | Pure HTML5 + JS (no server needed)|
-| JpGraph (server-side PNG)     | Chart.js 4.4 (client-side SVG)    |
-| FPDF (server PHP→PDF)         | jsPDF 2.5 (browser PDF)           |
-| `eval()` module dispatch      | DOM navigation + event handlers   |
-| Inline table layouts          | CSS Grid + Flexbox                |
-| Plain-text passwords          | Ready for bcrypt (PHP 8 backend)  |
-| GSM modem flat files          | SMS hook (Semaphore API ready)    |
-| Apache + MySQL required       | Runs from any folder / USB drive  |
+| Component | Purpose | Status |
+|---|---|---|
+| Root index.html | Original CHITS-inspired UI with dashboard, program modules, sample data, and browser PDF demonstrations | Prototype/demo served at `/` by the shared PHP router |
+| pilot/ | Authenticated patient registration/search, SOAP-style consultation entry, and persistent patient history | Development pilot served at `/pilot/`; smoke-tested in GitHub Actions |
+| docs/ | Architecture notes, original schema reference, API contract, and setup guide | Planning/reference documents; not all endpoints are implemented |
 
----
+The pilot smoke test checks PHP/JavaScript syntax and exercises login, CSRF protection, patient creation, consultation creation/history, invalid vital-sign rejection, and logout using fictional data. This is not a security audit, clinical validation, or production-readiness certification.
 
-## Modules covered
+## Existing prototype
 
-### Clinical
-- Dashboard — morbidity trend chart, disease alerts, queue, appointments
-- Today's Queue — patient flow tracking
-- Patient Records — searchable, filterable
-- Patient Record — 7-tab view: Consultations, Vital signs, Maternal, FP, Labs, Notifiable, Appointments
-- Consultation entry — full SOAP form, ICD-10, vitals, program tag, SMS appointment reminder
-- Family Folders — household registry
-- Appointments — scheduler with SMS reminder hooks
+The root index.html is designed to open directly in a browser for UI demonstrations. It includes a CHITS-inspired dashboard, clinical and public-health program screens, charts, and client-side PDF examples.
 
-### Labs & Pharmacy
-- Laboratory — requests, results, flags (CBC, Urinalysis, Sputum, CXR, OGTT…)
-- Drug Inventory — 13 categories from original `m_lib_drug_category` seeds, stock/reorder alerts
+Some screens, records, reports, and actions are illustrative. A displayed button or generated PDF does not imply that a corresponding backend record was saved or that a report has been validated for official use.
 
-### Health Programs
-- Family Planning — method mix chart, CPR, TCL, dropout tracking
-- Maternal Care — prenatal masterlist, risk flagging, visit tracking
-- TB / NTP — full register, DOTS phase, sputum grading, cohort outcomes
-- Immunization (EPI) — per-antigen tracking (BCG, HepB, DPT, OPV, Measles)
-- Dental Services — extractions, fillings, oral exams
-- Leprosy — MDT register, disability grading
+### Run the prototype
 
-### Surveillance
-- Notifiable Diseases — all 33 DOH-EB reportable conditions with threshold alerts
-- Epi Reports — weekly bar chart with threshold overlay, quarterly summary
-- Injury Surveillance — road, violence, occupational
+Open index.html in a modern browser, or serve the repository root locally:
 
-### Reports & PDF (real generation via jsPDF)
-| Report                        | Original PHP file                    |
-|-------------------------------|--------------------------------------|
-| Daily Service Report          | `daily_service_report.php`           |
-| Morbidity Report (FHSIS M1)  | `morbidity_report.php`               |
-| Epi Weekly Monitoring         | `epi_weekly_monitoring_report.php`   |
-| FP Monthly                    | `fp_monthly.php`                     |
-| FP Target Client List         | `fp_tcl.php`                         |
-| Prenatal TCL                  | `mc_prenatal.php`                    |
-| TB Register                   | `tb_register.php`                    |
-| TB Summary / Cohort           | `tb_summary.php`                     |
-| Child Care Dev Under-One      | `ccdev_underone.php`                 |
-| Dental Quarterly              | `dental_quarterly.php`               |
-| Demographic Profile           | `demographic.php`                    |
-| Consultation print            | `notes_print.php`                    |
+~~~sh
+python3 -m http.server 8000
+~~~
 
-### Admin
-- Users — role-based access (Admin / Physician / Midwife / Nurse / Encoder)
-- Health center config — mirrors `config.xml` fields
-- Barangay registry — area codes, population
-- CSV import — patient batch upload
+Then visit http://127.0.0.1:8000/. This serves the demo UI only; it does not enable the separate PHP pilot's database or authentication.
 
----
+## Patient-to-consultation pilot
 
-## File structure
+The isolated pilot is under pilot/. It currently supports:
+- Session-based login for users provisioned from the command line
+- Patient registration and search
+- Patient detail and consultation history
+- SOAP-style consultation entry and basic vital-sign input validation
+- SQLite persistence, prepared statements, foreign keys, and basic audit events
+- A manual smoke-test guide and GitHub Actions checks
 
-```
-chits-modern/
-├── index.html          ← Full self-contained app (open this)
+### Requirements
+
+- PHP 8.2 or newer
+- PHP extensions: pdo_sqlite and mbstring
+- Python 3 for the end-to-end smoke-test script
+- A writable data directory outside the web root
+
+### Install and run locally
+
+See **[Pilot installation and testing guide](docs/INSTALLATION.md)** or [pilot/README.md](pilot/README.md).
+
+Quick start on Linux/macOS, from the repository root:
+
+~~~sh
+mkdir -p "$HOME/.local/share/chits-pilot"
+chmod 700 "$HOME/.local/share/chits-pilot"
+export CHITS_DB_PATH="$HOME/.local/share/chits-pilot/chits.sqlite"
+php -S 127.0.0.1:8080 -t . pilot/router.php
+~~~
+
+In a second terminal, set the same database path and provision an account:
+
+~~~sh
+export CHITS_DB_PATH="$HOME/.local/share/chits-pilot/chits.sqlite"
+php pilot/bin/create-user.php demo-admin admin
+~~~
+
+Open http://127.0.0.1:8080/ for the CHITS dashboard, then choose **Patient Care Pilot** in the sidebar (or open http://127.0.0.1:8080/pilot/ directly). The account creation script prompts for a password. Use fictional data only. The PHP built-in server is for local development and must not be exposed to a network.
+
+## Repository layout
+
+~~~text
+.
+├── index.html                  # Existing standalone UI prototype
 ├── src/
-│   ├── chits.css       ← Extracted design system & component styles
-│   └── chits.js        ← Extracted application logic & PDF generators
+│   ├── chits.css               # Extracted UI styles
+│   ├── chits.js                # Extracted prototype logic and PDF examples
+│   └── api-stub.php            # Earlier, explicitly incomplete API stub
+├── pilot/
+│   ├── public/                 # Pilot UI and API entry point
+│   ├── src/bootstrap.php       # SQLite setup, session helpers, validation
+│   ├── bin/create-user.php     # CLI-only account provisioning
+│   ├── tests/smoke.py          # End-to-end smoke test
+│   ├── router.php              # Local development router and security headers
+│   └── README.md               # Pilot-specific instructions and limitations
 ├── docs/
-│   ├── ARCHITECTURE.md ← How to wire a real backend (PHP 8 / Laravel)
-│   ├── DATABASE.md     ← Schema reference from original SQL
-│   └── API.md          ← REST API contract for backend integration
-├── assets/             ← (placeholder for logos, fonts if needed offline)
-└── README.md           ← This file
-```
+│   ├── API.md                  # Intended wider API contract; not fully implemented
+│   ├── ARCHITECTURE.md         # Proposed backend migration architecture
+│   ├── DATABASE.md             # Original schema reference
+│   └── INSTALLATION.md         # Setup and testing instructions
+└── .github/workflows/
+    └── pilot-checks.yml        # Automated syntax and smoke checks
+~~~
 
----
+## Tests
 
-## Running it
+GitHub Actions runs syntax checks and an end-to-end smoke test for the isolated pilot when relevant files change. View [workflow runs](https://github.com/mdfl212/chits-modern/actions/workflows/pilot-checks.yml).
 
-**No server required for the prototype:**
-```bash
-# Option 1: just open in browser
-open index.html
+To run the smoke test locally, first configure PHP with pdo_sqlite and mbstring, create a private database directory, provision a test user, start the local server as described in pilot/README.md, then run:
 
-# Option 2: local server (avoids any CORS issues with future fetch() calls)
-npx serve .
-# or
-php -S localhost:8080
-```
+~~~sh
+python3 pilot/tests/smoke.py
+~~~
 
----
+The smoke test expects the local server to be running at 127.0.0.1:8080 and a fictional test account named ci-user to exist. Do not reuse production credentials or data.
 
-## Next steps (backend wiring)
+## Before any real-world deployment
 
-See `docs/ARCHITECTURE.md` for the full PHP 8 + PDO migration plan.
+This project is **not ready for production clinical use**. Work still required includes, at minimum:
+- Independent security testing, threat modelling, rate limiting, and stronger account protections such as MFA
+- Production-grade access control and audit-log protection
+- Encryption at rest and in transit, secure backups, and tested recovery procedures
+- Formal database migrations, data retention rules, privacy/consent workflows, and incident response
+- Duplicate patient matching, record correction/amendment workflows, and concurrency handling
+- Clinical validation of forms and vital-sign rules, and validation of official DOH/FHSIS/PIDSR reports
+- Accessibility/usability testing with intended users and a supervised RHU pilot
+- Deployment architecture review; the pilot's SQLite setup is for initial local development, not a recommendation for multi-user production hosting
 
-Key: replace the in-memory JS data objects with `fetch('/api/...')` calls to a
-Laravel or Slim PHP 8 backend. Every module has a 1:1 mapping to the original
-`class.*.php` files.
+A successful automated smoke test only shows that the tested paths worked in that test environment. It does not establish that the system is safe, legally compliant, clinically valid, or production-ready.
 
----
-
-## Credits
+## Credits and licensing
 
 - Original CHITS: Herman Tolentino MD, UP Manila
-- Modernization: Reverse-engineered for community-based health surveillance research
-- License: GPLv2 (same as original CHITS)
+- This repository: modernization and reverse-engineering project for community-health workflow prototyping
+- The README of the original project describes GPLv2; verify the provenance and licensing of all source assets before redistribution or deployment.
