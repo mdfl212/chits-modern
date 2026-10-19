@@ -5,7 +5,7 @@ This isolated vertical slice is for development and review only. It does not rep
 ## Included
 - Session login with CLI-provisioned users and password hashes.
 - CSRF protection for state-changing requests, same-origin requests, and no permissive CORS.
-- Patient registration and name/ID search.
+- Household / family-folder creation and registry, with patient-to-household linking and member lists.\n- Patient registration and name/ID search.
 - Consultation creation with SOAP fields and basic vital input ranges.
 - Persistent patient history using SQLite, prepared statements, foreign keys, and audit events.
 - Dependency-free UI with HTML escaping and basic security headers.
@@ -43,7 +43,7 @@ Open http://127.0.0.1:8080/ for the original CHITS-inspired dashboard. Choose **
 There is no public user-registration endpoint. State-changing requests require the CSRF token returned by /api/csrf or login.
 
 ## Important limitations
-This is a development scaffold, not a finished EHR. Missing: rate limiting, MFA, production-grade/tamper-evident audit logging, formal migration versioning, encryption at rest, encrypted automated backups, recovery drills, duplicate patient matching/merge, amendment/signature workflows, privacy/consent workflows, validated FHSIS/PIDSR reports, interoperability, and independent security testing. SQLite is used to keep the first slice small; multi-user RHU deployment needs architecture review and likely a server database.
+This is a development scaffold, not a finished EHR. Missing: household editing and patient reassignment, rate limiting, MFA, production-grade/tamper-evident audit logging, formal migration versioning, encryption at rest, encrypted automated backups, recovery drills, duplicate patient matching/merge, amendment/signature workflows, privacy/consent workflows, validated FHSIS/PIDSR reports, interoperability, and independent security testing. SQLite is used to keep the first slice small; multi-user RHU deployment needs architecture review and likely a server database.
 
 Do not infer clinical safety from input validation or a successful save. Clinical protocols, privacy policy, retention, access controls, and report definitions need review by responsible RHU/LGU, clinical, and privacy leads before use.
 
