@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - "pilot/**"
+      - "index.html"
+      - "README.md"
+      - "docs/INSTALLATION.md"
       - ".github/workflows/pilot-checks.yml"
   push:
     branches:
@@ -11,6 +14,9 @@ on:
       - "feat/**"
     paths:
       - "pilot/**"
+      - "index.html"
+      - "README.md"
+      - "docs/INSTALLATION.md"
       - ".github/workflows/pilot-checks.yml"
 
 jobs:
