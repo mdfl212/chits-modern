@@ -19,9 +19,26 @@ if ($method==='POST'&&$path==='/api/login') {
 if ($method==='POST'&&$path==='/api/logout') { $u=require_user(); require_csrf(); audit(db(),(int)$u['id'],'logout','user',(string)$u['id']); $_SESSION=[]; if (ini_get('session.use_cookies')) { $p=session_get_cookie_params(); setcookie(session_name(),'', ['expires'=>time()-42000,'path'=>$p['path'],'secure'=>$p['secure'],'httponly'=>true,'samesite'=>'Strict']); } session_destroy(); json_response(['ok'=>true]); }
 $u=require_user();
 if ($method==='GET'&&$path==='/api/me') json_response(['user'=>['username'=>$u['username'],'role'=>$u['role']]]);
+if ($method==='GET'&&$path==='/api/households') {
+ $q=trim((string)($_GET['q']??'')); if (mb_strlen($q)>100) json_response(['error'=>'Search query is too long.'],422);
+ $sql="SELECT h.id,h.household_code,h.household_head,h.barangay,h.address,h.created_at,COUNT(p.id) AS member_count FROM households h LEFT JOIN patients p ON p.household_id=h.id";
+ $params=[]; if ($q!=='') { $sql.=" WHERE h.household_code LIKE :q ESCAPE '\\' OR h.household_head LIKE :q ESCAPE '\\' OR h.barangay LIKE :q ESCAPE '\\'"; $params[':q']='%'.addcslashes($q,'\\%_').'%'; }
+ $sql.=' GROUP BY h.id ORDER BY h.household_head LIMIT 200'; $s=db()->prepare($sql); $s->execute($params); json_response(['households'=>$s->fetchAll()]);
+}
+if ($method==='POST'&&$path==='/api/households') {
+ require_role($u,['admin','provider','encoder']); require_csrf(); $d=request_json();
+ $head=required_string($d,'householdHead',160,'Household head'); $barangay=required_string($d,'barangay',120,'Barangay'); $code=optional_string($d,'householdCode',40,'Household code')??('HH-'.strtoupper(bin2hex(random_bytes(4)))); $address=optional_string($d,'address',250,'Address')??''; $id=new_uuid(); $pdo=db();
+ try { $s=$pdo->prepare('INSERT INTO households(id,household_code,household_head,barangay,address,created_by) VALUES (:id,:code,:head,:barangay,:address,:actor)'); $s->execute([':id'=>$id,':code'=>$code,':head'=>$head,':barangay'=>$barangay,':address'=>$address,':actor'=>$u['id']]); audit($pdo,(int)$u['id'],'create','household',$id); }
+ catch (PDOException $e) { if (str_contains(strtolower($e->getMessage()),'unique')) json_response(['error'=>'That household code is already in use. Choose a different code.'],409); error_log('CHITS household create failed: '.$e->getMessage()); json_response(['error'=>'Household could not be saved. No record was confirmed.'],500); }
+ json_response(['household'=>['id'=>$id,'household_code'=>$code,'household_head'=>$head,'barangay'=>$barangay,'address'=>$address,'member_count'=>0]],201);
+}
+if (preg_match('#^/api/households/([a-f0-9-]{36})$#i',$path,$m)&&$method==='GET') {
+ $s=db()->prepare('SELECT id,household_code,household_head,barangay,address,created_at FROM households WHERE id=:id'); $s->execute([':id'=>$m[1]]); $h=$s->fetch(); if (!$h) json_response(['error'=>'Household not found.'],404);
+ $s=db()->prepare('SELECT id,first_name,last_name,date_of_birth,sex,barangay FROM patients WHERE household_id=:id ORDER BY last_name,first_name'); $s->execute([':id'=>$m[1]]); json_response(['household'=>$h,'members'=>$s->fetchAll()]);
+}
 if ($method==='GET'&&$path==='/api/patients') {
  $q=trim((string)($_GET['q']??'')); if (mb_strlen($q)>100) json_response(['error'=>'Search query is too long.'],422);
- $sql='SELECT id,first_name,last_name,date_of_birth,sex,phone,barangay,created_at FROM patients'; $params=[];
+ $sql='SELECT id,first_name,last_name,date_of_birth,sex,phone,barangay,household_id,created_at FROM patients'; $params=[];
  if ($q!=='') { $sql.=" WHERE first_name LIKE :q ESCAPE '\\' OR last_name LIKE :q ESCAPE '\\' OR id=:id"; $params[':q']='%'.addcslashes($q,'\\%_').'%'; $params[':id']=$q; }
  $sql.=' ORDER BY last_name,first_name LIMIT 200'; $s=db()->prepare($sql); $s->execute($params); json_response(['patients'=>$s->fetchAll()]);
 }
@@ -30,8 +47,9 @@ if ($method==='POST'&&$path==='/api/patients') {
  $first=required_string($d,'firstName',100,'First name'); $last=required_string($d,'lastName',100,'Last name'); $dob=required_string($d,'dateOfBirth',10,'Date of birth');
  if (!valid_date($dob)||$dob>(new DateTimeImmutable('today'))->format('Y-m-d')) json_response(['error'=>'Enter a valid date of birth that is not in the future.'],422);
  $sex=required_string($d,'sex',20,'Sex'); if (!in_array($sex,['female','male','intersex','unknown'],true)) json_response(['error'=>'Select a valid sex value.'],422);
- $barangay=required_string($d,'barangay',120,'Barangay'); $phone=optional_string($d,'phone',40,'Phone'); $id=new_uuid(); $pdo=db();
- try { $s=$pdo->prepare('INSERT INTO patients(id,first_name,last_name,date_of_birth,sex,phone,barangay,created_by) VALUES (:id,:f,:l,:dob,:sex,:phone,:barangay,:actor)'); $s->execute([':id'=>$id,':f'=>$first,':l'=>$last,':dob'=>$dob,':sex'=>$sex,':phone'=>$phone,':barangay'=>$barangay,':actor'=>$u['id']]); audit($pdo,(int)$u['id'],'create','patient',$id); }
+ $barangay=required_string($d,'barangay',120,'Barangay'); $phone=optional_string($d,'phone',40,'Phone'); $householdId=optional_string($d,'householdId',36,'Household'); $id=new_uuid(); $pdo=db();
+ if ($householdId!==null) { $hs=$pdo->prepare('SELECT id,barangay FROM households WHERE id=:id'); $hs->execute([':id'=>$householdId]); $household=$hs->fetch(); if (!$household) json_response(['error'=>'Selected household was not found.'],422); if (mb_strtolower($household['barangay'])!==mb_strtolower($barangay)) json_response(['error'=>'Patient barangay must match the selected household barangay.'],422); }
+ try { $s=$pdo->prepare('INSERT INTO patients(id,first_name,last_name,date_of_birth,sex,phone,barangay,household_id,created_by) VALUES (:id,:f,:l,:dob,:sex,:phone,:barangay,:household,:actor)'); $s->execute([':id'=>$id,':f'=>$first,':l'=>$last,':dob'=>$dob,':sex'=>$sex,':phone'=>$phone,':barangay'=>$barangay,':household'=>$householdId,':actor'=>$u['id']]); audit($pdo,(int)$u['id'],'create','patient',$id); }
  catch (Throwable $e) { error_log('CHITS patient create failed: '.$e->getMessage()); json_response(['error'=>'Patient could not be saved. No record was confirmed.'],500); }
  $s=$pdo->prepare('SELECT id,first_name,last_name,date_of_birth,sex,phone,barangay,created_at FROM patients WHERE id=:id'); $s->execute([':id'=>$id]); json_response(['patient'=>$s->fetch()],201);
 }
