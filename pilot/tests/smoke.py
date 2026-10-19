@@ -39,15 +39,21 @@ def main():
     csrf = login["csrfToken"]
     assert login["user"]["username"] == "ci-user"
 
+    household = request("/api/households", "POST", {"householdHead":"Synthetic Household Head","barangay":"Synthetic Barangay","householdCode":"HH-CI-001","address":"Synthetic Sitio"}, {"X-CSRF-Token":csrf}, 201)["household"]
+    households = request("/api/households")["households"]
+    assert any(h["id"] == household["id"] and h["member_count"] == 0 for h in households)
+
     patient = request("/api/patients", "POST", {
         "firstName":"Test", "lastName":"Patient", "dateOfBirth":"1990-01-02",
-        "sex":"unknown", "barangay":"Synthetic Barangay", "phone":""
+        "sex":"unknown", "barangay":"Synthetic Barangay", "phone":"", "householdId":household["id"]
     }, {"X-CSRF-Token":csrf}, 201)["patient"]
     pid = patient["id"]
     assert patient["first_name"] == "Test"
 
     detail = request("/api/patients/" + pid)
     assert detail["patient"]["id"] == pid and detail["consultations"] == []
+    family = request("/api/households/" + household["id"])
+    assert family["household"]["household_code"] == "HH-CI-001" and len(family["members"]) == 1 and family["members"][0]["id"] == pid
 
     request("/api/patients/" + pid + "/consultations", "POST", {
         "visitDate":"2026-01-02", "chiefComplaint":"Synthetic cough",
@@ -71,7 +77,7 @@ def main():
 
     request("/api/logout", "POST", {}, {"X-CSRF-Token":csrf}, 200)
     request("/api/patients", expected=401)
-    print("PASS: auth, CSRF, patient registration, persistence, consultation creation/history, validation, logout")
+    print("PASS: auth, CSRF, household creation and membership, patient registration, persistence, consultation history, validation, logout")
 
 if __name__ == "__main__":
     main()
