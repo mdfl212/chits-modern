@@ -28,7 +28,7 @@ In a second terminal, use the same database path and create an account:
 export CHITS_DB_PATH="$HOME/.local/share/chits-pilot/chits.sqlite"
 php pilot/bin/create-user.php demo-admin admin
 ```
-Open http://127.0.0.1:8080/ for the original CHITS-inspired dashboard. Choose **Patient Care Pilot** in its sidebar to open the persistent workflow at `/pilot/`, or open http://127.0.0.1:8080/pilot/ directly. The pilot includes a link back to the dashboard. Use fictitious data only. PHP's built-in server is for local development and must not be exposed to a network.
+Open http://127.0.0.1:8080/ for the original CHITS-inspired dashboard. Choose **Patient Care Workspace** in its sidebar to open the persistent workflow at `/pilot/`, or open http://127.0.0.1:8080/pilot/ directly. The pilot includes a link back to the dashboard. Use fictitious data only. PHP's built-in server is for local development and must not be exposed to a network.
 
 ## API
 - GET /api/csrf
@@ -43,7 +43,7 @@ Open http://127.0.0.1:8080/ for the original CHITS-inspired dashboard. Choose **
 There is no public user-registration endpoint. State-changing requests require the CSRF token returned by /api/csrf or login.
 
 ## Important limitations
-This is a development scaffold, not a finished EHR. Missing: household editing and patient reassignment, rate limiting, MFA, production-grade/tamper-evident audit logging, formal migration versioning, encryption at rest, encrypted automated backups, recovery drills, duplicate patient matching/merge, amendment/signature workflows, privacy/consent workflows, validated FHSIS/PIDSR reports, interoperability, and independent security testing. SQLite is used to keep the first slice small; multi-user RHU deployment needs architecture review and likely a server database.
+This is a development scaffold, not a finished EHR. Missing: household deletion/merge workflows, rate limiting, MFA, production-grade/tamper-evident audit logging, formal migration versioning, encryption at rest, encrypted automated backups, recovery drills, duplicate patient matching/merge, amendment/signature workflows, privacy/consent workflows, validated FHSIS/PIDSR reports, interoperability, and independent security testing. SQLite is used to keep the first slice small; multi-user RHU deployment needs architecture review and likely a server database.
 
 Do not infer clinical safety from input validation or a successful save. Clinical protocols, privacy policy, retention, access controls, and report definitions need review by responsible RHU/LGU, clinical, and privacy leads before use.
 
