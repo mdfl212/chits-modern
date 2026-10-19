@@ -55,6 +55,34 @@ def main():
     family = request("/api/households/" + household["id"])
     assert family["household"]["household_code"] == "HH-CI-001" and len(family["members"]) == 1 and family["members"][0]["id"] == pid
 
+    # Household edits are persisted, but cannot create barangay inconsistencies.
+    request("/api/households/" + household["id"], "PATCH", {
+        "householdCode":"HH-CI-001", "householdHead":"Updated Synthetic Head",
+        "barangay":"Different Synthetic Barangay", "address":"Updated address"
+    }, {"X-CSRF-Token":csrf}, 422)
+    request("/api/households/" + household["id"], "PATCH", {
+        "householdCode":"HH-CI-001", "householdHead":"Updated Synthetic Head",
+        "barangay":"Synthetic Barangay", "address":"Updated address"
+    }, {"X-CSRF-Token":csrf}, 200)
+    family = request("/api/households/" + household["id"])
+    assert family["household"]["household_head"] == "Updated Synthetic Head"
+
+    other = request("/api/households", "POST", {
+        "householdHead":"Other Synthetic Head", "barangay":"Other Barangay",
+        "householdCode":"HH-CI-002"
+    }, {"X-CSRF-Token":csrf}, 201)["household"]
+    request("/api/patients/" + pid + "/household", "PATCH", {
+        "householdId":other["id"]
+    }, {"X-CSRF-Token":csrf}, 422)
+    request("/api/patients/" + pid + "/household", "PATCH", {
+        "householdId":None
+    }, {"X-CSRF-Token":csrf}, 200)
+    detail = request("/api/patients/" + pid)
+    assert detail["patient"]["household_id"] is None
+    request("/api/patients/" + pid + "/household", "PATCH", {
+        "householdId":household["id"]
+    }, {"X-CSRF-Token":csrf}, 200)
+
     request("/api/patients/" + pid + "/consultations", "POST", {
         "visitDate":"2026-01-02", "chiefComplaint":"Synthetic cough",
         "subjective":"Fictional symptom history", "objective":"Fictional exam",
@@ -77,7 +105,7 @@ def main():
 
     request("/api/logout", "POST", {}, {"X-CSRF-Token":csrf}, 200)
     request("/api/patients", expected=401)
-    print("PASS: auth, CSRF, household creation and membership, patient registration, persistence, consultation history, validation, logout")
+    print("PASS: auth, CSRF, household creation, editing and reassignment, patient registration, persistence, consultation history, validation, logout")
 
 if __name__ == "__main__":
     main()
