@@ -6,12 +6,12 @@ A modernization/reverse-engineering project inspired by the original Community H
 
 ## Project status
 
-The repository currently contains two separate experiences. They are not yet integrated with each other.
+The repository now has a shared local PHP entry point linking the original demo UI to the patient-to-consultation pilot. This is navigation and local-server integration, not a full backend conversion of all legacy modules.
 
 | Component | Purpose | Status |
 |---|---|---|
-| Root index.html | Original CHITS-inspired, self-contained UI with dashboard, program modules, sample data, and browser PDF demonstrations | Prototype/demo |
-| pilot/ | Separate PHP workflow for login, patient registration/search, SOAP-style consultation entry, and persistent patient history | Development pilot; smoke-tested in GitHub Actions |
+| Root index.html | Original CHITS-inspired UI with dashboard, program modules, sample data, and browser PDF demonstrations | Prototype/demo served at `/` by the shared PHP router |
+| pilot/ | Authenticated patient registration/search, SOAP-style consultation entry, and persistent patient history | Development pilot served at `/pilot/`; smoke-tested in GitHub Actions |
 | docs/ | Architecture notes, original schema reference, API contract, and setup guide | Planning/reference documents; not all endpoints are implemented |
 
 The pilot smoke test checks PHP/JavaScript syntax and exercises login, CSRF protection, patient creation, consultation creation/history, invalid vital-sign rejection, and logout using fictional data. This is not a security audit, clinical validation, or production-readiness certification.
@@ -59,7 +59,7 @@ Quick start on Linux/macOS, from the repository root:
 mkdir -p "$HOME/.local/share/chits-pilot"
 chmod 700 "$HOME/.local/share/chits-pilot"
 export CHITS_DB_PATH="$HOME/.local/share/chits-pilot/chits.sqlite"
-php -S 127.0.0.1:8080 -t pilot/public pilot/router.php
+php -S 127.0.0.1:8080 -t . pilot/router.php
 ~~~
 
 In a second terminal, set the same database path and provision an account:
@@ -69,7 +69,7 @@ export CHITS_DB_PATH="$HOME/.local/share/chits-pilot/chits.sqlite"
 php pilot/bin/create-user.php demo-admin admin
 ~~~
 
-Open http://127.0.0.1:8080. The account creation script prompts for a password. Use fictional data only. The PHP built-in server is for local development and must not be exposed to a network.
+Open http://127.0.0.1:8080/ for the CHITS dashboard, then choose **Patient Care Pilot** in the sidebar (or open http://127.0.0.1:8080/pilot/ directly). The account creation script prompts for a password. Use fictional data only. The PHP built-in server is for local development and must not be exposed to a network.
 
 ## Repository layout
 
