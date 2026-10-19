@@ -41,9 +41,22 @@ if (preg_match('#^/api/households/([a-f0-9-]{36})$#i',$path,$m)&&$method==='PATC
  catch (PDOException $e) { if (str_contains(strtolower($e->getMessage()),'unique')) json_response(['error'=>'That household code is already in use. Choose a different code.'],409); error_log('CHITS household update failed: '.$e->getMessage()); json_response(['error'=>'Household could not be updated. No success was confirmed.'],500); }
  json_response(['household'=>['id'=>$id,'household_code'=>$code,'household_head'=>$head,'barangay'=>$barangay,'address'=>$address]]);
 }
+if (preg_match('#^/api/households/([a-f0-9-]{36})/health-profile$#i',$path,$m)&&$method==='PATCH') {
+ require_role($u,['admin','provider','encoder']); require_csrf(); $d=request_json(); $id=$m[1]; $pdo=db();
+ $s=$pdo->prepare('SELECT id FROM households WHERE id=:id'); $s->execute([':id'=>$id]); if (!$s->fetch()) json_response(['error'=>'Household not found.'],404);
+ $choices=['waterSource'=>['piped','protected_well','unprotected_well','surface_water','delivered','other','unknown'],'sanitation'=>['flush_septic','flush_sewer','pit_latrine','open_defecation','none','other','unknown'],'cookingFuel'=>['electricity','lpg','biomass','kerosene','other','unknown']]; $values=[];
+ foreach ($choices as $key=>$allowed) { $value=$d[$key]??'unknown'; if (!is_string($value)||!in_array($value,$allowed,true)) json_response(['error'=>'Select a valid value for '.preg_replace('/([A-Z])/',' $1',$key).'.'],422); $values[$key]=$value; }
+ $allowedRisks=['flood_prone','overcrowding','vector_breeding','animal_exposure']; $risks=$d['riskFactors']??[]; if (!is_array($risks)||count($risks)>count($allowedRisks)||count(array_unique($risks))!==count($risks)) json_response(['error'=>'Risk factors must be a list of supported values.'],422); foreach ($risks as $risk) if (!is_string($risk)||!in_array($risk,$allowedRisks,true)) json_response(['error'=>'Risk factors must be a list of supported values.'],422);
+ $notes=optional_string($d,'contextualNotes',1000,'Contextual notes')??'';
+ try { $s=$pdo->prepare("INSERT INTO household_health_profiles(household_id,water_source,sanitation,cooking_fuel,risk_factors,contextual_notes,updated_by) VALUES (:id,:water,:sanitation,:fuel,:risks,:notes,:actor) ON CONFLICT(household_id) DO UPDATE SET water_source=excluded.water_source,sanitation=excluded.sanitation,cooking_fuel=excluded.cooking_fuel,risk_factors=excluded.risk_factors,contextual_notes=excluded.contextual_notes,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP"); $s->execute([':id'=>$id,':water'=>$values['waterSource'],':sanitation'=>$values['sanitation'],':fuel'=>$values['cookingFuel'],':risks'=>json_encode(array_values($risks),JSON_THROW_ON_ERROR),':notes'=>$notes,':actor'=>$u['id']]); audit($pdo,(int)$u['id'],'update','household_health_profile',$id); }
+ catch (Throwable $e) { error_log('CHITS household health profile save failed: '.$e->getMessage()); json_response(['error'=>'Household health profile could not be saved. No success was confirmed.'],500); }
+ json_response(['healthProfile'=>['water_source'=>$values['waterSource'],'sanitation'=>$values['sanitation'],'cooking_fuel'=>$values['cookingFuel'],'risk_factors'=>array_values($risks),'contextual_notes'=>$notes]]);
+}
 if (preg_match('#^/api/households/([a-f0-9-]{36})$#i',$path,$m)&&$method==='GET') {
  $s=db()->prepare('SELECT id,household_code,household_head,barangay,address,created_at FROM households WHERE id=:id'); $s->execute([':id'=>$m[1]]); $h=$s->fetch(); if (!$h) json_response(['error'=>'Household not found.'],404);
- $s=db()->prepare('SELECT id,first_name,last_name,date_of_birth,sex,barangay FROM patients WHERE household_id=:id ORDER BY last_name,first_name'); $s->execute([':id'=>$m[1]]); json_response(['household'=>$h,'members'=>$s->fetchAll()]);
+ $s=db()->prepare('SELECT id,first_name,last_name,date_of_birth,sex,barangay FROM patients WHERE household_id=:id ORDER BY last_name,first_name'); $s->execute([':id'=>$m[1]]); $members=$s->fetchAll();
+ $s=db()->prepare('SELECT water_source,sanitation,cooking_fuel,risk_factors,contextual_notes,updated_at FROM household_health_profiles WHERE household_id=:id'); $s->execute([':id'=>$m[1]]); $profile=$s->fetch(); if ($profile) { $profile['risk_factors']=json_decode($profile['risk_factors'],true)?:[]; } else { $profile=['water_source'=>'unknown','sanitation'=>'unknown','cooking_fuel'=>'unknown','risk_factors'=>[],'contextual_notes'=>'','updated_at'=>null]; }
+ json_response(['household'=>$h,'members'=>$members,'healthProfile'=>$profile]);
 }
 if ($method==='GET'&&$path==='/api/patients') {
  $q=trim((string)($_GET['q']??'')); if (mb_strlen($q)>100) json_response(['error'=>'Search query is too long.'],422);
