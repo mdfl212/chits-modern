@@ -54,6 +54,20 @@ def main():
     assert detail["patient"]["id"] == pid and detail["consultations"] == []
     family = request("/api/households/" + household["id"])
     assert family["household"]["household_code"] == "HH-CI-001" and len(family["members"]) == 1 and family["members"][0]["id"] == pid
+    assert family["healthProfile"]["water_source"] == "unknown" and family["healthProfile"]["risk_factors"] == []
+    profile = request("/api/households/" + household["id"] + "/health-profile", "PATCH", {
+        "waterSource":"protected_well", "sanitation":"pit_latrine", "cookingFuel":"biomass",
+        "riskFactors":["flood_prone","vector_breeding"], "contextualNotes":"Synthetic household context only"
+    }, {"X-CSRF-Token":csrf}, 200)["healthProfile"]
+    assert profile["water_source"] == "protected_well" and "flood_prone" in profile["risk_factors"]
+    family = request("/api/households/" + household["id"])
+    assert family["healthProfile"]["sanitation"] == "pit_latrine" and family["healthProfile"]["contextual_notes"] == "Synthetic household context only"
+    request("/api/households/" + household["id"] + "/health-profile", "PATCH", {
+        "waterSource":"unsafe_magic_value", "sanitation":"unknown", "cookingFuel":"unknown", "riskFactors":[]
+    }, {"X-CSRF-Token":csrf}, 422)
+    request("/api/households/" + household["id"] + "/health-profile", "PATCH", {
+        "waterSource":"unknown", "sanitation":"unknown", "cookingFuel":"unknown", "riskFactors":["unsupported_risk"]
+    }, {"X-CSRF-Token":csrf}, 422)
 
     # Household edits are persisted, but cannot create barangay inconsistencies.
     request("/api/households/" + household["id"], "PATCH", {
@@ -105,7 +119,7 @@ def main():
 
     request("/api/logout", "POST", {}, {"X-CSRF-Token":csrf}, 200)
     request("/api/patients", expected=401)
-    print("PASS: auth, CSRF, household creation, editing and reassignment, patient registration, persistence, consultation history, validation, logout")
+    print("PASS: auth, CSRF, household registry/maintenance, household profile persistence/validation, patient registration/reassignment, consultation history, validation, logout")
 
 if __name__ == "__main__":
     main()
