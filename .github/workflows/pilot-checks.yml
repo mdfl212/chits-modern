@@ -36,7 +36,7 @@ jobs:
           CHITS_DB_PATH: /tmp/chits-pilot-ci.sqlite
         run: |
           php -r 'require "pilot/src/bootstrap.php"; $p=db(); $s=$p->prepare("INSERT INTO users(username,password_hash,role) VALUES (:u,:p,:r)"); $s->execute([":u"=>"ci-user",":p"=>password_hash("ci-test-password-12345", PASSWORD_DEFAULT),":r"=>"admin"]);'
-          php -S 127.0.0.1:8080 -t pilot/public pilot/router.php >/tmp/chits-pilot-server.log 2>&1 &
+          php -S 127.0.0.1:8080 -t . pilot/router.php >/tmp/chits-pilot-server.log 2>&1 &
           echo $! > /tmp/chits-pilot-server.pid
           for i in $(seq 1 30); do
             if curl --silent --fail http://127.0.0.1:8080/ >/dev/null; then break; fi
