@@ -14,7 +14,7 @@ python3 -m http.server 8000
 
 Open http://127.0.0.1:8000/. Alternatively, open the root index.html directly. This is demo-only and does not enable the pilot backend.
 
-For the integrated experience, use the PHP router in Section 2. It serves the legacy dashboard at `/` and the persistent patient workflow at `/pilot/`. In the legacy sidebar, **Patients (Demo)** remains illustrative; use **Patient Care Pilot** for the authenticated, persistent workflow.
+For the integrated experience, use the PHP router in Section 2. It serves the legacy dashboard at `/` and the persistent patient workflow at `/pilot/`. In the legacy sidebar, **Patients** and **Consultations** open the authenticated patient workflow; **Patient Care Workspace** is the direct link. Other legacy modules remain demo-only.
 
 ## 2. Patient-to-consultation pilot
 
@@ -65,7 +65,7 @@ From the repository root, with the database path configured:
 php -S 127.0.0.1:8080 -t . pilot/router.php
 ~~~
 
-Open http://127.0.0.1:8080/ for the CHITS dashboard, then select **Patient Care Pilot** in the sidebar. You can also open http://127.0.0.1:8080/pilot/ directly. Sign in using the account you just created. Use only fictitious records.
+Open http://127.0.0.1:8080/ for the CHITS dashboard, then select **Patient Care Workspace** in the sidebar. You can also open http://127.0.0.1:8080/pilot/ directly. Sign in using the account you just created. Use only fictitious records.
 
 The PHP built-in server is for local development only. It must not be exposed to the internet or used as production hosting.
 
