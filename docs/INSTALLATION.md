@@ -1,6 +1,6 @@
 # Installation and testing guide
 
-This guide covers the two separate parts of CHITS Modern. **Use fictional data only.** Neither part is approved for real patient records, clinical decisions, or official RHU reporting.
+This guide covers the integrated local entry point for the CHITS Modern demo and patient-to-consultation pilot. **Use fictional data only.** Neither part is approved for real patient records, clinical decisions, or official RHU reporting.
 
 ## 1. Existing UI prototype
 
@@ -12,9 +12,9 @@ From the repository root:
 python3 -m http.server 8000
 ~~~
 
-Open http://127.0.0.1:8000/. Alternatively, open the root index.html directly.
+Open http://127.0.0.1:8000/. Alternatively, open the root index.html directly. This is demo-only and does not enable the pilot backend.
 
-This is the standalone demonstration UI. It does not start the pilot backend, create a database, or make the prototype's sample actions persist to the pilot.
+For the integrated experience, use the PHP router in Section 2. It serves the legacy dashboard at `/` and the persistent patient workflow at `/pilot/`. In the legacy sidebar, **Patients (Demo)** remains illustrative; use **Patient Care Pilot** for the authenticated, persistent workflow.
 
 ## 2. Patient-to-consultation pilot
 
@@ -62,10 +62,10 @@ The command prompts for a password. Use a unique password of at least 14 charact
 From the repository root, with the database path configured:
 
 ~~~sh
-php -S 127.0.0.1:8080 -t pilot/public pilot/router.php
+php -S 127.0.0.1:8080 -t . pilot/router.php
 ~~~
 
-Open http://127.0.0.1:8080 and sign in using the account you just created. Use only fictitious records.
+Open http://127.0.0.1:8080/ for the CHITS dashboard, then select **Patient Care Pilot** in the sidebar. You can also open http://127.0.0.1:8080/pilot/ directly. Sign in using the account you just created. Use only fictitious records.
 
 The PHP built-in server is for local development only. It must not be exposed to the internet or used as production hosting.
 
