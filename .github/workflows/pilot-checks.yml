@@ -42,6 +42,10 @@ jobs:
             if curl --silent --fail http://127.0.0.1:8080/ >/dev/null; then break; fi
             sleep 1
           done
+          curl --silent --fail http://127.0.0.1:8080/ | grep -q 'Patient Care Pilot'
+          curl --silent --fail http://127.0.0.1:8080/pilot/ | grep -q 'Patient care workspace'
+          curl --silent --fail http://127.0.0.1:8080/pilot/app.js | grep -q 'function loadPatients'
+          curl --silent --fail http://127.0.0.1:8080/pilot/styles.css | grep -q 'topbar'
           python3 pilot/tests/smoke.py
       - name: Show server log on failure
         if: failure()
