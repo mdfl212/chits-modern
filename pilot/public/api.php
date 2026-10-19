@@ -51,7 +51,7 @@ if ($method==='POST'&&$path==='/api/patients') {
  if ($householdId!==null) { $hs=$pdo->prepare('SELECT id,barangay FROM households WHERE id=:id'); $hs->execute([':id'=>$householdId]); $household=$hs->fetch(); if (!$household) json_response(['error'=>'Selected household was not found.'],422); if (mb_strtolower($household['barangay'])!==mb_strtolower($barangay)) json_response(['error'=>'Patient barangay must match the selected household barangay.'],422); }
  try { $s=$pdo->prepare('INSERT INTO patients(id,first_name,last_name,date_of_birth,sex,phone,barangay,household_id,created_by) VALUES (:id,:f,:l,:dob,:sex,:phone,:barangay,:household,:actor)'); $s->execute([':id'=>$id,':f'=>$first,':l'=>$last,':dob'=>$dob,':sex'=>$sex,':phone'=>$phone,':barangay'=>$barangay,':household'=>$householdId,':actor'=>$u['id']]); audit($pdo,(int)$u['id'],'create','patient',$id); }
  catch (Throwable $e) { error_log('CHITS patient create failed: '.$e->getMessage()); json_response(['error'=>'Patient could not be saved. No record was confirmed.'],500); }
- $s=$pdo->prepare('SELECT id,first_name,last_name,date_of_birth,sex,phone,barangay,created_at FROM patients WHERE id=:id'); $s->execute([':id'=>$id]); json_response(['patient'=>$s->fetch()],201);
+ $s=$pdo->prepare('SELECT id,first_name,last_name,date_of_birth,sex,phone,barangay,household_id,created_at FROM patients WHERE id=:id'); $s->execute([':id'=>$id]); json_response(['patient'=>$s->fetch()],201);
 }
 if (preg_match('#^/api/patients/([a-f0-9-]{36})$#i',$path,$m)&&$method==='GET') {
  $s=db()->prepare('SELECT id,first_name,last_name,date_of_birth,sex,phone,barangay,created_at FROM patients WHERE id=:id'); $s->execute([':id'=>$m[1]]); $p=$s->fetch(); if (!$p) json_response(['error'=>'Patient not found.'],404);
