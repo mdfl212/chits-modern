@@ -1,9 +1,9 @@
 'use strict';
 (function(){
-let csrfToken='',activePatientId='';const $=id=>document.getElementById(id);const apiBase=String(window.CHITS_CONFIG?.apiBaseUrl||'').replace(/\/$/,'');
+let csrfToken='',activePatientId='';const $=id=>document.getElementById(id);const apiBase=String(window.CHITS_CONFIG?.apiBaseUrl??'').replace(/\/$/,'');
 const formObject=form=>Object.fromEntries(new FormData(form).entries());
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function api(path,options={}){if(!apiBase)throw new Error('Backend is not configured. Set the GitHub repository variable CHITS_API_BASE_URL and redeploy Pages.');const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.method&&options.method!=='GET'?{'X-CSRF-Token':csrfToken}:{}),...(options.headers||{})};const r=await fetch(apiBase+path,{...options,headers,credentials:'include',cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401)loggedOut();throw new Error(d.error||'Request failed. No success was confirmed.')}if(d.csrfToken)csrfToken=d.csrfToken;return d}
+async function api(path,options={}){const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.method&&options.method!=='GET'?{'X-CSRF-Token':csrfToken}:{}),...(options.headers||{})};const r=await fetch(apiBase+path,{...options,headers,credentials:'include',cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401)loggedOut();throw new Error(d.error||'Request failed. No success was confirmed.')}if(d.csrfToken)csrfToken=d.csrfToken;return d}
 function status(id,msg,error=false){const e=$(id);if(e){e.textContent=msg||'';e.classList.toggle('error',error)}}
 function loggedOut(){$('login-panel').hidden=false;$('workspace').hidden=true;$('user-area').hidden=true;activePatientId=''}
 function workspace(user){$('login-panel').hidden=true;$('workspace').hidden=false;$('user-area').hidden=false;$('user-label').textContent=user.username+' · '+user.role}
