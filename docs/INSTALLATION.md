@@ -79,9 +79,9 @@ The PHP built-in server is for local development only. It must not be exposed to
 6. Try a future date, missing required fields, and out-of-range vital signs; confirm the application rejects invalid input.
 7. Sign out and confirm protected routes require authentication again.
 
-## 4. Hosted frontend and backend staging
+## 4. Containerized local demo
 
-For GitHub Pages + separately hosted PHP API deployment, follow [docs/DEPLOYMENT.md](DEPLOYMENT.md). GitHub Pages cannot execute PHP or provide a persistent server database. The deployment workflow publishes only the pilot frontend; it does not deploy the backend or configure hosting for you. Use synthetic data only.
+For a single-command local setup with the dashboard, PHP API, and persistent SQLite volume, follow [docs/DEMO.md](DEMO.md). It requires Docker Compose but no hosting account or public deployment. Use synthetic data only.
 
 ## 5. Automated smoke test
 
