@@ -20,6 +20,12 @@ new = """  // GitHub Pages demo: keep navigation inside this static, synthetic-d
 if old not in html:
     raise SystemExit("Could not find the expected clinical navigation block; refusing to build a misleading demo.")
 html = html.replace(old, new, 1)
+# Replace the PHP-only workspace shortcut with a local mock navigation item.
+php_link = '<a class="sb-item" href="/pilot/" style="display:flex;align-items:center;text-decoration:none;color:inherit;">🩺 Patient Care Workspace</a>'
+mock_link = '<div class="sb-item" data-pg2="patients" onclick="clinNav(this,\'patients\')">🩺 Patient Care Workspace</div>'
+if php_link not in html:
+    raise SystemExit("Could not find the expected PHP-only workspace link; refusing to publish a broken route.")
+html = html.replace(php_link, mock_link, 1)
 
 notice = """
 <style>
@@ -30,7 +36,7 @@ notice = """
 """
 if "</body>" not in html:
     raise SystemExit("Could not find the document body.")
-html = html.replace("</body>", notice + "\\n</body>", 1)
+html = html.replace("</body>", notice + "\n</body>", 1)
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(html, encoding="utf-8")
 print(f"Built {OUT.relative_to(ROOT)} ({len(html)} characters)")
