@@ -9,5 +9,7 @@ ENV CHITS_COOKIE_SAMESITE=None
 RUN sed -ri 's!/var/www/html!/var/www/pilot/public!g' /etc/apache2/sites-available/*.conf /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 COPY pilot/ /var/www/pilot/
 COPY deploy/backend/000-default.conf /etc/apache2/sites-available/000-default.conf
-RUN mkdir -p /data && chown -R www-data:www-data /var/www/pilot /data
+COPY deploy/backend/entrypoint.sh /usr/local/bin/chits-entrypoint
+RUN chmod 0755 /usr/local/bin/chits-entrypoint && mkdir -p /data && chown -R www-data:www-data /var/www/pilot /data
 EXPOSE 80
+ENTRYPOINT ["/usr/local/bin/chits-entrypoint"]
