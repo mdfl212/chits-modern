@@ -20,6 +20,9 @@ on:
       - "index.html"
       - "README.md"
       - "docs/INSTALLATION.md"
+      - "docs/DEMO.md"
+      - "deploy/demo/**"
+      - "docker-compose.yml"
       - ".github/workflows/pilot-checks.yml"
 
 jobs:
