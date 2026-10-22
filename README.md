@@ -51,7 +51,7 @@ The isolated pilot is under pilot/. It currently supports:
 
 ### Install and run locally
 
-See **[Pilot installation and testing guide](docs/INSTALLATION.md)** or [pilot/README.md](pilot/README.md).
+See **[Pilot installation and testing guide](docs/INSTALLATION.md)** or [pilot/README.md](pilot/README.md). For the separate static frontend + hosted PHP API deployment scaffold, see [Full deployment guide](docs/DEPLOYMENT.md).
 
 Quick start on Linux/macOS, from the repository root:
 
@@ -120,7 +120,7 @@ This project is **not ready for production clinical use**. Work still required i
 - Accessibility/usability testing with intended users and a supervised RHU pilot
 - Deployment architecture review; the pilot's SQLite setup is for initial local development, not a recommendation for multi-user production hosting
 
-A successful automated smoke test only shows that the tested paths worked in that test environment. It does not establish that the system is safe, legally compliant, clinically valid, or production-ready.
+A successful automated smoke test only shows that the tested paths worked in that test environment. It does not establish that the system is safe, legally compliant, clinically valid, or production-ready. The GitHub Pages + hosted PHP backend deployment scaffold is documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md); it is for synthetic-data staging only.
 
 ## Credits and licensing
 
