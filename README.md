@@ -26,7 +26,7 @@ GitHub Pages cannot run PHP. The persistent PHP/SQLite pilot remains a separate 
 
 ## Existing prototype
 
-The root index.html is designed to open directly in a browser for UI demonstrations. It includes a CHITS-inspired dashboard, clinical and public-health program screens, charts, and client-side PDF examples.
+The root index.html opens to an epidemiology-first home dashboard with surveillance KPIs, an interactive map, priority signals, and weekly trends, alongside clinical and public-health program screens and client-side PDF examples. The map and dashboard counts in the public demo are synthetic; approximate points are not official barangay boundaries or live surveillance.
 
 Some screens, records, reports, and actions are illustrative. A displayed button or generated PDF does not imply that a corresponding backend record was saved or that a report has been validated for official use.
 
@@ -39,6 +39,8 @@ python3 -m http.server 8000
 ~~~
 
 Then visit http://127.0.0.1:8000/. This serves the demo UI only; it does not enable the separate PHP pilot's database or authentication.
+
+See [the epidemiology dashboard data contract](docs/EPIDEMIOLOGY-DASHBOARD.md) for the planned aggregate-data interface and safeguards required before operational use.
 
 ## Patient-to-consultation pilot
 
