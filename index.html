@@ -178,7 +178,8 @@ function renderEpiDashboard(){
   const periodSelect=document.getElementById('epi-period');
   if(periodSelect){
     const isBackend=data.source==='backend';
-    Array.from(periodSelect.options).forEach(option=>{option.disabled=isBackend&&!data.periods?.[option.value]&&option.value!==epiSelectedPeriod;});
+    if(isBackend&&!data.periods){epiSelectedPeriod='28';periodSelect.value='28';}
+    Array.from(periodSelect.options).forEach(option=>{option.disabled=isBackend&&(!data.periods||!data.periods[option.value]);});
   }
   const banner=document.querySelector('.epi-demo-banner');
   if(banner){
