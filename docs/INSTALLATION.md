@@ -2,7 +2,15 @@
 
 This guide covers the integrated local entry point for the CHITS Modern demo and patient-to-consultation pilot. **Use fictional data only.** Neither part is approved for real patient records, clinical decisions, or official RHU reporting.
 
-## 1. Existing UI prototype
+## 1. Browser mock (GitHub Pages)
+
+After the Pages workflow is merged to `main` and the repository's **Settings → Pages → Source** is set to **GitHub Actions**, open:
+
+https://mdfl212.github.io/chits-modern/
+
+This requires no local installation. It is a static mock of the dashboard and existing sample screens. It does not run PHP, connect to the pilot API, or persist changes.
+
+## 2. Existing UI prototype
 
 Requirements: a modern browser. Python 3 is optional if you prefer serving files locally.
 
@@ -16,7 +24,7 @@ Open http://127.0.0.1:8000/. Alternatively, open the root index.html directly. T
 
 For the integrated experience, use the PHP router in Section 2. It serves the legacy dashboard at `/` and the persistent patient workflow at `/pilot/`. In the legacy sidebar, **Patients** and **Consultations** open the authenticated patient workflow; **Patient Care Workspace** is the direct link. Other legacy modules remain demo-only.
 
-## 2. Patient-to-consultation pilot
+## 3. Patient-to-consultation pilot
 
 ### Requirements
 
