@@ -51,7 +51,7 @@ The isolated pilot is under pilot/. It currently supports:
 
 ### Install and run locally
 
-See **[Pilot installation and testing guide](docs/INSTALLATION.md)** or [pilot/README.md](pilot/README.md). For the separate static frontend + hosted PHP API deployment scaffold, see [Full deployment guide](docs/DEPLOYMENT.md).
+See the **[local demo quick start](docs/DEMO.md)**, **[pilot installation and testing guide](docs/INSTALLATION.md)**, or [pilot/README.md](pilot/README.md).
 
 Quick start on Linux/macOS, from the repository root:
 
