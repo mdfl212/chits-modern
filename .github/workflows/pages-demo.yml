@@ -35,6 +35,7 @@ jobs:
           grep -q 'PUBLIC MOCK DEMO' _site/index.html
           grep -q 'GitHub Pages demo: keep navigation inside this static' _site/index.html
           ! grep -q "window.location.href='/pilot/'" _site/index.html
+          ! grep -q 'href="/pilot/"' _site/index.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
