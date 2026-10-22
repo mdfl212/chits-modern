@@ -130,6 +130,7 @@ function closeModal(id){document.getElementById('modal-'+id)?.classList.remove('
 function closeOvr(e,id){if(e.target.id==='modal-'+id) closeModal(id);}
 
 // Epidemiology dashboard map and data adapter.
+let epiSelectedPeriod='28';
 const EPI_DEMO_POINTS = [
   {barangay:'Brgy. 3',lat:8.9518,lng:125.5359,cases:{Dengue:14,Diarrhea:2,ARI:3,TB:1},level:'high'},
   {barangay:'Brgy. 7',lat:8.9442,lng:125.5485,cases:{Dengue:3,Diarrhea:8,ARI:2,TB:0},level:'watch'},
@@ -146,12 +147,19 @@ function epiDashboardData(){
   // Backend integration seam: inject validated aggregate data as window.CHITS_EPI_DATA.
   // Never put identifiable case-level data on this map.
   const d=window.CHITS_EPI_DATA;
-  if(d && Array.isArray(d.points) && d.summary) return d;
-  return {source:'demo',asOf:'Illustrative sample data',summary:{newCases:31,priorityAlerts:3,barangaysWithSignals:4,barangaysTotal:9,completenessPercent:89},points:EPI_DEMO_POINTS,alerts:[
-    {condition:'Dengue',barangay:'Brgy. 3',count:14,level:'high',note:'Above illustrative threshold · verify onset dates'},
-    {condition:'Acute diarrhea',barangay:'Brgy. 7',count:8,level:'watch',note:'Rising signal · assess shared exposures'},
-    {condition:'Acute diarrhea',barangay:'Brgy. 9',count:5,level:'watch',note:'Check clustering and reporting completeness'}
-  ]};
+  if(d && Array.isArray(d.points) && d.summary){
+    const period=d.periods&&d.periods[epiSelectedPeriod];
+    return period&&Array.isArray(period.points)&&period.summary?{...d,...period,source:'backend'}:d;
+  }
+  const factor=epiSelectedPeriod==='7'?0.35:(epiSelectedPeriod==='90'?2.2:1);
+  const summary={newCases:epiSelectedPeriod==='7'?11:(epiSelectedPeriod==='90'?82:31),priorityAlerts:epiSelectedPeriod==='7'?2:(epiSelectedPeriod==='90'?4:3),barangaysWithSignals:epiSelectedPeriod==='7'?3:(epiSelectedPeriod==='90'?6:4),barangaysTotal:9,completenessPercent:89};
+  const points=EPI_DEMO_POINTS.map(p=>({...p,cases:Object.fromEntries(Object.entries(p.cases).map(([k,v])=>[k,Math.max(0,Math.round(v*factor))]))}));
+  const alerts=[
+    {condition:'Dengue',barangay:'Brgy. 3',count:Math.max(1,Math.round(14*factor)),level:'high',note:'Illustrative signal · verify onset dates'},
+    {condition:'Acute diarrhea',barangay:'Brgy. 7',count:Math.max(1,Math.round(8*factor)),level:'watch',note:'Sample rising signal · assess shared exposures'},
+    {condition:'Acute diarrhea',barangay:'Brgy. 9',count:Math.max(1,Math.round(5*factor)),level:'watch',note:'Check clustering and reporting completeness'}
+  ].slice(0,epiSelectedPeriod==='7'?2:3);
+  return {source:'demo',asOf:'Illustrative sample data',summary,points,alerts};
 }
 function escapeEpiHtml(value){
   return String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
@@ -167,6 +175,11 @@ function renderEpiDashboard(){
   if(completeness) completeness.innerHTML=escapeEpiHtml(s.completenessPercent??'—')+'<small>%</small>';
   const progress=document.querySelector('.epi-progress span');
   if(progress) progress.style.width=Math.max(0,Math.min(100,Number(s.completenessPercent)||0))+'%';
+  const periodSelect=document.getElementById('epi-period');
+  if(periodSelect){
+    const isBackend=data.source==='backend';
+    Array.from(periodSelect.options).forEach(option=>{option.disabled=isBackend&&!data.periods?.[option.value]&&option.value!==epiSelectedPeriod;});
+  }
   const banner=document.querySelector('.epi-demo-banner');
   if(banner){
     const demo=data.source!=='backend';
@@ -215,11 +228,11 @@ function focusEpiPoint(name){
   if(marker){epiMapInstance.setView(marker.getLatLng(),14,{animate:true});marker.openPopup();}
 }
 function updateEpiPeriod(days){
-  // Demo values are fixed sample aggregates; a connected implementation should request
-  // the selected window from the backend and update all KPIs, trends and map data together.
+  epiSelectedPeriod=String(days);
   renderEpiDashboard();
-  const note=document.querySelector('.epi-demo-banner span:last-child');
-  if(note && !window.CHITS_EPI_DATA) note.textContent='Illustrative sample aggregates · selected window: last '+days+' days. No live case feed is connected.';
+  renderEpiMap(document.getElementById('epi-disease-layer')?.value||'all');
+  if(morbInst2){morbInst2.destroy();morbInst2=null;}
+  initMorbChart2();
 }
 window.addEventListener('load',()=>{renderEpiDashboard();initEpiMap(); if(typeof initMorbChart2==='function') initMorbChart2();});
 // init date on dashboard
