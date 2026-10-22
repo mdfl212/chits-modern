@@ -46,7 +46,7 @@ window.CHITS_EPI_DATA = {
 };
 ```
 
-The values above are illustrative schema examples, not real epidemiological findings. The dashboard does not currently calculate alerts, incidence rates, expected thresholds, or reporting completeness. Those must be computed and validated by the backend using approved definitions and epidemiologic weeks.
+The values above are illustrative schema examples, not real epidemiological findings. A backend may also provide a `periods` object keyed by `"7"`, `"28"`, and `"90"`, each containing its own `summary`, `points`, `alerts`, and optional `trends` object. The reporting-window selector only enables periods supplied by the source. The dashboard does not currently calculate alerts, incidence rates, expected thresholds, or reporting completeness. Those must be computed and validated by the backend using approved definitions and epidemiologic weeks.
 
 ## Requirements before operational use
 
@@ -67,4 +67,4 @@ The map is built with Leaflet and OpenStreetMap tiles. Leaflet's documentation r
 
 ## Current limitations
 
-The static demo displays synthetic aggregate values and approximate illustrative points. The local PHP pilot currently handles patient registration and consultations, not the epidemiology aggregation contract above. The dashboard is prepared to accept a backend-supplied aggregate object, but a real data pipeline, endpoint, authorization checks and validation are still required before this screen can be described as live surveillance.
+The static demo displays synthetic aggregate values and approximate illustrative points; the reporting-window selector changes the synthetic sample aggregation for demonstration. The local PHP pilot currently handles patient registration and consultations, not the epidemiology aggregation contract above. The dashboard is prepared to accept a backend-supplied aggregate object, but a real data pipeline, endpoint, authorization checks and validation are still required before this screen can be described as live surveillance.
