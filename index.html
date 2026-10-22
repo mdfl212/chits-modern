@@ -464,7 +464,7 @@ select.f-i{cursor:pointer}
     <div class="sb-sub">PDF Reports Engine · jsPDF</div>
   </div>
   <div class="sb-sec">PDF Reports (23)</div>
-  <div class="sb-item active" data-pg="reports" onclick="go(this,'reports')"><span class="sb-ic">📄</span>All Reports</div>
+  <div class="sb-item" data-pg="reports" onclick="go(this,'reports')"><span class="sb-ic">📄</span>All Reports</div>
   <div class="sb-item" data-pg="daily-service" onclick="go(this,'daily-service')"><span class="sb-ic">📊</span>Daily Service Report</div>
   <div class="sb-item" data-pg="morbidity" onclick="go(this,'morbidity')"><span class="sb-ic">🦠</span>Morbidity (FHSIS)</div>
   <div class="sb-item" data-pg="epi-weekly" onclick="go(this,'epi-weekly')"><span class="sb-ic">📈</span>Epi Weekly Monitoring</div>
@@ -490,7 +490,7 @@ select.f-i{cursor:pointer}
   <!-- ══ CLINICAL ══════════════════════════════════════════════ -->
   <div class="sb-divider" style="height:1px;background:rgba(255,255,255,.07);margin:6px 0;"></div>
   <div class="sb-section2" style="padding:8px 14px 3px;font-size:9px;font-weight:600;color:rgba(255,255,255,.25);letter-spacing:.7px;text-transform:uppercase;">Clinical</div>
-  <div class="sb-item" data-pg2="dashboard" onclick="clinNav(this,'dashboard')">◫ Dashboard</div>
+  <div class="sb-item active" data-pg2="dashboard" onclick="clinNav(this,'dashboard')">◫ Dashboard</div>
   <div class="sb-item" data-pg2="queue" onclick="clinNav(this,'queue')">⏱ Queue <span style="margin-left:auto;background:#da3633;color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;font-weight:600;">5</span></div>
   <div class="sb-item" data-pg2="patients" onclick="clinNav(this,'patients')">👤 Patients</div>
   <a class="sb-item" href="/pilot/" style="display:flex;align-items:center;text-decoration:none;color:inherit;">🩺 Patient Care Workspace</a>
@@ -529,7 +529,7 @@ select.f-i{cursor:pointer}
 <main class="content">
 
 <!-- ══ ALL REPORTS ══════════════════════════════════════════════ -->
-<div id="page-reports" class="page active">
+<div id="page-reports" class="page">
   <div class="ph">
     <div><div class="pg-t">PDF Reports Engine</div>
       <div class="pg-s">All 23 FPDF reports from chits_query/pdf_reports/ — modernized to jsPDF with real PDF download</div>
@@ -1082,7 +1082,7 @@ select.f-i{cursor:pointer}
 
 
 <!-- ══ CLINICAL PAGES ═══════════════════════════════════════════ -->
-<div id="page-dashboard" class="page">
+<div id="page-dashboard" class="page active">
 
   <div class="epi-hero">
     <div>
