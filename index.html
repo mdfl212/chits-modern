@@ -138,17 +138,52 @@ const EPI_DEMO_POINTS = [
 ];
 let epiMapInstance=null, epiMapMarkers=[];
 function epiDashboardData(){
-  // Backend integration seam: the PHP layer may inject validated, aggregate data
-  // into window.CHITS_EPI_DATA. Never place identifiable case-level data on this map.
+  // Backend integration seam: inject validated aggregate data as window.CHITS_EPI_DATA.
+  // Never put identifiable case-level data on this map.
   const d=window.CHITS_EPI_DATA;
-  return d && Array.isArray(d.points) ? d : {source:'demo',points:EPI_DEMO_POINTS};
+  if(d && Array.isArray(d.points) && d.summary) return d;
+  return {source:'demo',asOf:'Illustrative sample data',summary:{newCases:31,priorityAlerts:3,barangaysWithSignals:4,barangaysTotal:9,completenessPercent:89},points:EPI_DEMO_POINTS,alerts:[
+    {condition:'Dengue',barangay:'Brgy. 3',count:14,level:'high',note:'Above illustrative threshold · verify onset dates'},
+    {condition:'Acute diarrhea',barangay:'Brgy. 7',count:8,level:'watch',note:'Rising signal · assess shared exposures'},
+    {condition:'Acute diarrhea',barangay:'Brgy. 9',count:5,level:'watch',note:'Check clustering and reporting completeness'}
+  ]};
+}
+function escapeEpiHtml(value){
+  return String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
+}
+function renderEpiDashboard(){
+  const data=epiDashboardData(), s=data.summary||{};
+  const setText=(id,value)=>{const el=document.getElementById(id);if(el&&value!==undefined&&value!==null)el.textContent=value;};
+  setText('epi-kpi-cases',s.newCases);
+  setText('epi-kpi-alerts',s.priorityAlerts);
+  const barangays=document.getElementById('epi-kpi-barangays');
+  if(barangays) barangays.innerHTML=escapeEpiHtml(s.barangaysWithSignals??'—')+' <small>/ '+escapeEpiHtml(s.barangaysTotal??'—')+'</small>';
+  const completeness=document.getElementById('epi-kpi-completeness');
+  if(completeness) completeness.innerHTML=escapeEpiHtml(s.completenessPercent??'—')+'<small>%</small>';
+  const progress=document.querySelector('.epi-progress span');
+  if(progress) progress.style.width=Math.max(0,Math.min(100,Number(s.completenessPercent)||0))+'%';
+  const banner=document.querySelector('.epi-demo-banner');
+  if(banner){
+    const demo=data.source!=='backend';
+    banner.innerHTML='<span class="epi-demo-badge">'+(demo?'DEMO DATA':'AGGREGATED DATA')+'</span><span>'+escapeEpiHtml(demo?'All counts and hotspot points are illustrative. The map uses approximate sample locations, not verified barangay boundaries or live surveillance data.':'Data as of '+(data.asOf||'timestamp unavailable')+'. Aggregate signals only; verify definitions and reporting completeness before action.')+'</span>';
+  }
+  renderEpiAlerts(data.alerts||[]);
+}
+function renderEpiAlerts(alerts){
+  const list=document.querySelector('.epi-alert-list'), count=document.querySelector('.epi-alert-count');
+  if(!list) return;
+  if(count) count.textContent=alerts.length;
+  list.innerHTML=alerts.length?alerts.map(a=>{
+    const level=a.level==='high'?'high':'watch';
+    return '<div class="epi-alert-row"><span class="epi-alert-level '+(level==='high'?'epi-level-high':'epi-level-watch')+'"></span><span class="epi-alert-copy"><b>'+escapeEpiHtml(a.condition)+'</b><small>'+escapeEpiHtml(a.barangay)+' · '+escapeEpiHtml(a.count)+' reports</small><small class="epi-alert-detail">'+escapeEpiHtml(a.note||'Review line list and verify signal')+'</small></span></div>';
+  }).join(''):'<div class="epi-alert-footer">No priority signals are present in this reporting window. Confirm reporting completeness before interpreting this as no cases.</div>';
 }
 function initEpiMap(){
   const el=document.getElementById('epi-map');
   if(!el || typeof L==='undefined') return;
   if(!epiMapInstance){
     epiMapInstance=L.map(el,{scrollWheelZoom:false}).setView([8.948,125.542],12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(epiMapInstance);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(epiMapInstance);
   }
   renderEpiMap(document.getElementById('epi-disease-layer')?.value||'all');
   setTimeout(()=>epiMapInstance.invalidateSize(),120);
@@ -163,7 +198,7 @@ function renderEpiMap(condition){
     const level=p.level||'normal', color=level==='high'?'#dc4545':level==='watch'?'#e4a23b':'#2e9d83';
     const marker=L.circleMarker([p.lat,p.lng],{radius:Math.min(15,7+Math.sqrt(value)*1.2),color:'#fff',weight:2,fillColor:color,fillOpacity:.88});
     const label=condition==='all'?'All monitored conditions':condition;
-    marker.bindPopup('<div class="epi-popup-title">'+String(p.barangay||'Barangay')+'</div><div><b>'+label+':</b> '+value+' reported signal(s)</div><div class="epi-popup-meta">'+(data.source==='demo'?'Illustrative sample point · verify before use':'Aggregate surveillance data · check source and reporting date')+'</div>');
+    marker.bindPopup('<div class="epi-popup-title">'+escapeEpiHtml(p.barangay||'Barangay')+'</div><div><b>'+escapeEpiHtml(label)+':</b> '+escapeEpiHtml(value)+' reported signal(s)</div><div class="epi-popup-meta">'+(data.source!=='backend'?'Illustrative sample point · verify before use':'Aggregate surveillance data · check source and reporting date')+'</div>');
     marker.addTo(epiMapInstance); marker.__epiBarangay=p.barangay; epiMapMarkers.push(marker);
   });
 }
@@ -176,10 +211,11 @@ function focusEpiPoint(name){
 function updateEpiPeriod(days){
   // Demo values are fixed sample aggregates; a connected implementation should request
   // the selected window from the backend and update all KPIs, trends and map data together.
+  renderEpiDashboard();
   const note=document.querySelector('.epi-demo-banner span:last-child');
   if(note && !window.CHITS_EPI_DATA) note.textContent='Illustrative sample aggregates · selected window: last '+days+' days. No live case feed is connected.';
 }
-window.addEventListener('load',()=>{initEpiMap(); if(typeof initMorbChart2==='function') initMorbChart2();});
+window.addEventListener('load',()=>{renderEpiDashboard();initEpiMap(); if(typeof initMorbChart2==='function') initMorbChart2();});
 // init date on dashboard
 (function(){
   const el=document.getElementById('dash-date');
