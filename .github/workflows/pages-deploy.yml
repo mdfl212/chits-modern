@@ -1,7 +1,7 @@
 name: Deploy CHITS Modern frontend to GitHub Pages
 on:
   push:
-    branches: [feat/github-pages-php-backend-deployment]
+    branches: [main, feat/github-pages-php-backend-deployment]
     paths:
       - "pilot/public/**"
       - ".github/workflows/pages-deploy.yml"
