@@ -180,8 +180,9 @@ function renderEpiAlerts(alerts){
   if(count) count.textContent=alerts.length;
   list.innerHTML=alerts.length?alerts.map(a=>{
     const level=a.level==='high'?'high':'watch';
-    return '<div class="epi-alert-row"><span class="epi-alert-level '+(level==='high'?'epi-level-high':'epi-level-watch')+'"></span><span class="epi-alert-copy"><b>'+escapeEpiHtml(a.condition)+'</b><small>'+escapeEpiHtml(a.barangay)+' · '+escapeEpiHtml(a.count)+' reports</small><small class="epi-alert-detail">'+escapeEpiHtml(a.note||'Review line list and verify signal')+'</small></span></div>';
+    return '<button type="button" class="epi-alert-row" data-epi-barangay="'+escapeEpiHtml(a.barangay)+'"><span class="epi-alert-level '+(level==='high'?'epi-level-high':'epi-level-watch')+'"></span><span class="epi-alert-copy"><b>'+escapeEpiHtml(a.condition)+'</b><small>'+escapeEpiHtml(a.barangay)+' · '+escapeEpiHtml(a.count)+' reports</small><small class="epi-alert-detail">'+escapeEpiHtml(a.note||'Review line list and verify signal')+'</small></span><span class="epi-alert-arrow">↗</span></button>';
   }).join(''):'<div class="epi-alert-footer">No priority signals are present in this reporting window. Confirm reporting completeness before interpreting this as no cases.</div>';
+  list.querySelectorAll('[data-epi-barangay]').forEach(el=>el.addEventListener('click',()=>focusEpiPoint(el.dataset.epiBarangay)));
 }
 function initEpiMap(){
   const el=document.getElementById('epi-map');
