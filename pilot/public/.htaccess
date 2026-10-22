@@ -1,0 +1,6 @@
+Options -Indexes
+RewriteEngine On
+RewriteRule ^api(?:/.*)?$ api.php [QSA,L]
+<FilesMatch "^(\.env|composer\.(json|lock)|.*\.sqlite.*)$">
+  Require all denied
+</FilesMatch>
