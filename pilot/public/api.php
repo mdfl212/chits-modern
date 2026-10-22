@@ -1,9 +1,30 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__).'/src/bootstrap.php';
-$secure=!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off';
+
+// Cross-origin frontend is allowed only from one explicitly configured origin.
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigin = trim((string)(getenv('CHITS_ALLOWED_ORIGIN') ?: ''));
+if ($origin !== '') {
+    $sameOrigin = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? '');
+    if ($allowedOrigin === '') $allowedOrigin = $sameOrigin;
+    if (!hash_equals($allowedOrigin, $origin)) {
+        http_response_code(403); header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error'=>'Origin is not allowed. Configure CHITS_ALLOWED_ORIGIN to the exact frontend origin.']); exit;
+    }
+    header('Access-Control-Allow-Origin: '.$allowedOrigin);
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Allow-Methods: GET, POST, PATCH, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token');
+    header('Vary: Origin');
+}
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') { http_response_code(204); exit; }
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+$sameSite = getenv('CHITS_COOKIE_SAMESITE') ?: 'Strict';
+if (!in_array($sameSite, ['Strict','Lax','None'], true)) $sameSite = 'Strict';
+if ($sameSite === 'None' && !$secure) { http_response_code(500); header('Content-Type: application/json; charset=utf-8'); echo json_encode(['error'=>'SameSite=None requires HTTPS.']); exit; }
 session_name('chits_pilot');
-session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>$secure,'httponly'=>true,'samesite'=>'Strict']);
+session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>$secure,'httponly'=>true,'samesite'=>$sameSite]);
 session_start();
 $path=preg_replace('#/+#','/',parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH)?:'/');
 $method=strtoupper($_SERVER['REQUEST_METHOD']??'GET');
