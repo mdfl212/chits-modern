@@ -85,15 +85,20 @@ let morbInst2=null;
 function initMorbChart2(){
   const ctx=document.getElementById('morbChart');
   if(!ctx||morbInst2) return;
-  const wks=['W30','W31','W32','W33','W34','W35','W36','W37','W38','W39','W40','W41'];
+  const epiData=epiDashboardData();
+  const defaultLabels=['W30','W31','W32','W33','W34','W35','W36','W37','W38','W39','W40','W41'];
+  const colors=['#da3633','#9a6700','#1f6feb','#147d6f','#6e40c9'];
+  const defaultSeries=[
+    {label:'Dengue',data:[4,5,6,7,8,9,10,11,12,10,13,14]},
+    {label:'Diarrhea',data:[7,8,6,9,10,8,7,6,7,7,8,8]},
+    {label:'Pneumonia',data:[5,4,6,5,5,6,5,4,5,6,6,6]},
+    {label:'TB',data:[4,4,3,4,3,4,3,3,3,3,3,3]}
+  ];
+  const wks=epiData.trends?.labels||defaultLabels;
+  const series=(epiData.trends?.datasets||defaultSeries).map((s,i)=>({...s,borderColor:s.borderColor||colors[i%colors.length],tension:.4,borderWidth:1.5,pointRadius:2}));
   morbInst2=new Chart(ctx,{
     type:'line',
-    data:{labels:wks,datasets:[
-      {label:'Dengue',data:[4,5,6,7,8,9,10,11,12,10,13,14],borderColor:'#da3633',tension:.4,borderWidth:1.5,pointRadius:2},
-      {label:'Diarrhea',data:[7,8,6,9,10,8,7,6,7,7,8,8],borderColor:'#9a6700',tension:.4,borderWidth:1.5,pointRadius:2},
-      {label:'Pneumonia',data:[5,4,6,5,5,6,5,4,5,6,6,6],borderColor:'#1f6feb',tension:.4,borderWidth:1.5,pointRadius:2},
-      {label:'TB',data:[4,4,3,4,3,4,3,3,3,3,3,3],borderColor:'#147d6f',tension:.4,borderWidth:1.5,pointRadius:2},
-    ]},
+    data:{labels:wks,datasets:series},
     options:{responsive:true,
       interaction:{intersect:false,mode:'index'},
       plugins:{legend:{labels:{font:{size:10},boxWidth:8,padding:8}}},
