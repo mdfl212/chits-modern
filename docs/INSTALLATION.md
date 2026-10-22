@@ -79,7 +79,11 @@ The PHP built-in server is for local development only. It must not be exposed to
 6. Try a future date, missing required fields, and out-of-range vital signs; confirm the application rejects invalid input.
 7. Sign out and confirm protected routes require authentication again.
 
-## 4. Automated smoke test
+## 4. Hosted frontend and backend staging
+
+For GitHub Pages + separately hosted PHP API deployment, follow [docs/DEPLOYMENT.md](DEPLOYMENT.md). GitHub Pages cannot execute PHP or provide a persistent server database. The deployment workflow publishes only the pilot frontend; it does not deploy the backend or configure hosting for you. Use synthetic data only.
+
+## 5. Automated smoke test
 
 The repository's GitHub Actions workflow installs the required PHP extensions and runs syntax checks and the end-to-end smoke test automatically.
 
