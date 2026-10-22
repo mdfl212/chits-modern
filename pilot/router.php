@@ -31,10 +31,13 @@ if (in_array($path,['/pilot','/pilot/','/pilot/index.html'],true)) {
     exit;
 }
 
-if (in_array($path,['/pilot/app.js','/pilot/styles.css'],true)) {
+if (in_array($path,['/pilot/app.js','/pilot/styles.css','/pilot/config.js'],true)) {
     header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
     header('Cache-Control: no-store');
-    if ($path==='/pilot/app.js') {
+    if ($path==='/pilot/config.js') {
+        header('Content-Type: application/javascript; charset=utf-8');
+        echo "window.CHITS_CONFIG = { apiBaseUrl: '' };\n";
+    } elseif ($path==='/pilot/app.js') {
         header('Content-Type: application/javascript; charset=utf-8');
         readfile(__DIR__.'/public/app.js');
     } else {
