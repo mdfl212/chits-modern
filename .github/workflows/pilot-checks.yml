@@ -7,6 +7,9 @@ on:
       - "index.html"
       - "README.md"
       - "docs/INSTALLATION.md"
+      - "docs/DEMO.md"
+      - "deploy/demo/**"
+      - "docker-compose.yml"
       - ".github/workflows/pilot-checks.yml"
   push:
     branches:
@@ -17,6 +20,9 @@ on:
       - "index.html"
       - "README.md"
       - "docs/INSTALLATION.md"
+      - "docs/DEMO.md"
+      - "deploy/demo/**"
+      - "docker-compose.yml"
       - ".github/workflows/pilot-checks.yml"
 
 jobs:
@@ -32,6 +38,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Build local demo container
+        run: docker build -f deploy/demo/Dockerfile -t chits-modern-demo:test .
       - name: PHP syntax checks
         run: |
           find pilot -name '*.php' -print0 | xargs -0 -n1 php -l

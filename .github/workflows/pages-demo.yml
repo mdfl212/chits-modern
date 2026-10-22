@@ -1,0 +1,57 @@
+name: GitHub Pages mock demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "scripts/build_pages_demo.py"
+      - ".github/workflows/pages-demo.yml"
+  pull_request:
+    paths:
+      - "index.html"
+      - "scripts/build_pages_demo.py"
+      - ".github/workflows/pages-demo.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-demo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Build static mock site
+        run: python3 scripts/build_pages_demo.py
+      - name: Validate static demo output
+        run: |
+          test -s _site/index.html
+          grep -q 'PUBLIC MOCK DEMO' _site/index.html
+          grep -q 'GitHub Pages demo: keep navigation inside this static' _site/index.html
+          ! grep -q "window.location.href='/pilot/'" _site/index.html
+          ! grep -q 'href="/pilot/"' _site/index.html
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

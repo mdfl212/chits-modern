@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 // ══════════════════════════════════════════════════════════════
 // CLINICAL MODULE NAVIGATION + HELPERS
@@ -37,10 +39,10 @@ function clinNav(el, pg){
   if(el) el.classList.add('active');
   const target = document.getElementById('page-'+pg);
   if(target){ target.classList.add('active'); }
-  const tb = document.getElementById('topbar-title') || document.getElementById('tb-title');
+  const tb = document.getElementById('topbar-title') || document.getElementById('tb-title') || document.getElementById('tbt');
   if(tb) tb.textContent = clinTitles[pg] || pg;
   // lazy charts
-  if(pg==='epi') setTimeout(()=>{initMorbChart2&&initMorbChart2();},80);
+  if(pg==='epi'||pg==='dashboard') setTimeout(()=>{initMorbChart2&&initMorbChart2();if(pg==='dashboard')initEpiMap();},80);
   if(pg==='patient-record') setTimeout(()=>{initVitalsChart&&initVitalsChart();},80);
 }
 
@@ -83,15 +85,20 @@ let morbInst2=null;
 function initMorbChart2(){
   const ctx=document.getElementById('morbChart');
   if(!ctx||morbInst2) return;
-  const wks=['W28','W29','W30','W31','W32','W33','W34','W35','W36','W37','W38','W39'];
+  const epiData=epiDashboardData();
+  const defaultLabels=['W30','W31','W32','W33','W34','W35','W36','W37','W38','W39','W40','W41'];
+  const colors=['#da3633','#9a6700','#1f6feb','#147d6f','#6e40c9'];
+  const defaultSeries=[
+    {label:'Dengue',data:[4,5,6,7,8,9,10,11,12,10,13,14]},
+    {label:'Diarrhea',data:[7,8,6,9,10,8,7,6,7,7,8,8]},
+    {label:'Pneumonia',data:[5,4,6,5,5,6,5,4,5,6,6,6]},
+    {label:'TB',data:[4,4,3,4,3,4,3,3,3,3,3,3]}
+  ];
+  const wks=epiData.trends?.labels||defaultLabels;
+  const series=(epiData.trends?.datasets||defaultSeries).map((s,i)=>({...s,borderColor:s.borderColor||colors[i%colors.length],tension:.4,borderWidth:1.5,pointRadius:2}));
   morbInst2=new Chart(ctx,{
     type:'line',
-    data:{labels:wks,datasets:[
-      {label:'Dengue',data:[4,5,6,7,8,9,10,11,12,10,13,14],borderColor:'#da3633',tension:.4,borderWidth:1.5,pointRadius:2},
-      {label:'Diarrhea',data:[7,8,6,9,10,8,7,6,7,7,8,8],borderColor:'#9a6700',tension:.4,borderWidth:1.5,pointRadius:2},
-      {label:'Pneumonia',data:[5,4,6,5,5,6,5,4,5,6,6,6],borderColor:'#1f6feb',tension:.4,borderWidth:1.5,pointRadius:2},
-      {label:'TB',data:[4,4,3,4,3,4,3,3,3,3,3,3],borderColor:'#147d6f',tension:.4,borderWidth:1.5,pointRadius:2},
-    ]},
+    data:{labels:wks,datasets:series},
     options:{responsive:true,
       interaction:{intersect:false,mode:'index'},
       plugins:{legend:{labels:{font:{size:10},boxWidth:8,padding:8}}},
@@ -122,6 +129,113 @@ function openModal(id){document.getElementById('modal-'+id)?.classList.add('open
 function closeModal(id){document.getElementById('modal-'+id)?.classList.remove('open');}
 function closeOvr(e,id){if(e.target.id==='modal-'+id) closeModal(id);}
 
+// Epidemiology dashboard map and data adapter.
+let epiSelectedPeriod='28';
+const EPI_DEMO_POINTS = [
+  {barangay:'Brgy. 3',lat:8.9518,lng:125.5359,cases:{Dengue:14,Diarrhea:2,ARI:3,TB:1},level:'high'},
+  {barangay:'Brgy. 7',lat:8.9442,lng:125.5485,cases:{Dengue:3,Diarrhea:8,ARI:2,TB:0},level:'watch'},
+  {barangay:'Brgy. 9',lat:8.9601,lng:125.5521,cases:{Dengue:2,Diarrhea:5,ARI:1,TB:0},level:'watch'},
+  {barangay:'Brgy. 1',lat:8.9464,lng:125.5275,cases:{Dengue:1,Diarrhea:1,ARI:2,TB:1},level:'normal'},
+  {barangay:'Brgy. 2',lat:8.9368,lng:125.5405,cases:{Dengue:2,Diarrhea:1,ARI:4,TB:2},level:'normal'},
+  {barangay:'Brgy. 5',lat:8.9538,lng:125.5610,cases:{Dengue:3,Diarrhea:1,ARI:2,TB:0},level:'normal'},
+  {barangay:'Brgy. 6',lat:8.9294,lng:125.5535,cases:{Dengue:1,Diarrhea:0,ARI:3,TB:1},level:'normal'},
+  {barangay:'Brgy. 4',lat:8.9683,lng:125.5331,cases:{Dengue:2,Diarrhea:1,ARI:1,TB:0},level:'normal'},
+  {barangay:'Brgy. 8',lat:8.9316,lng:125.5238,cases:{Dengue:1,Diarrhea:0,ARI:2,TB:0},level:'normal'}
+];
+let epiMapInstance=null, epiMapMarkers=[];
+function epiDashboardData(){
+  // Backend integration seam: inject validated aggregate data as window.CHITS_EPI_DATA.
+  // Never put identifiable case-level data on this map.
+  const d=window.CHITS_EPI_DATA;
+  if(d && Array.isArray(d.points) && d.summary){
+    const period=d.periods&&d.periods[epiSelectedPeriod];
+    return period&&Array.isArray(period.points)&&period.summary?{...d,...period,source:'backend'}:d;
+  }
+  const factor=epiSelectedPeriod==='7'?0.35:(epiSelectedPeriod==='90'?2.2:1);
+  const summary={newCases:epiSelectedPeriod==='7'?11:(epiSelectedPeriod==='90'?82:31),priorityAlerts:epiSelectedPeriod==='7'?2:(epiSelectedPeriod==='90'?4:3),barangaysWithSignals:epiSelectedPeriod==='7'?3:(epiSelectedPeriod==='90'?6:4),barangaysTotal:9,completenessPercent:89};
+  const points=EPI_DEMO_POINTS.map(p=>({...p,cases:Object.fromEntries(Object.entries(p.cases).map(([k,v])=>[k,Math.max(0,Math.round(v*factor))]))}));
+  const alerts=[
+    {condition:'Dengue',barangay:'Brgy. 3',count:Math.max(1,Math.round(14*factor)),level:'high',note:'Illustrative signal · verify onset dates'},
+    {condition:'Acute diarrhea',barangay:'Brgy. 7',count:Math.max(1,Math.round(8*factor)),level:'watch',note:'Sample rising signal · assess shared exposures'},
+    {condition:'Acute diarrhea',barangay:'Brgy. 9',count:Math.max(1,Math.round(5*factor)),level:'watch',note:'Check clustering and reporting completeness'}
+  ].slice(0,epiSelectedPeriod==='7'?2:3);
+  return {source:'demo',asOf:'Illustrative sample data',summary,points,alerts};
+}
+function escapeEpiHtml(value){
+  return String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
+}
+function renderEpiDashboard(){
+  const data=epiDashboardData(), s=data.summary||{};
+  const setText=(id,value)=>{const el=document.getElementById(id);if(el&&value!==undefined&&value!==null)el.textContent=value;};
+  setText('epi-kpi-cases',s.newCases);
+  setText('epi-kpi-alerts',s.priorityAlerts);
+  const barangays=document.getElementById('epi-kpi-barangays');
+  if(barangays) barangays.innerHTML=escapeEpiHtml(s.barangaysWithSignals??'—')+' <small>/ '+escapeEpiHtml(s.barangaysTotal??'—')+'</small>';
+  const completeness=document.getElementById('epi-kpi-completeness');
+  if(completeness) completeness.innerHTML=escapeEpiHtml(s.completenessPercent??'—')+'<small>%</small>';
+  const progress=document.querySelector('.epi-progress span');
+  if(progress) progress.style.width=Math.max(0,Math.min(100,Number(s.completenessPercent)||0))+'%';
+  const periodSelect=document.getElementById('epi-period');
+  if(periodSelect){
+    const isBackend=data.source==='backend';
+    if(isBackend&&!data.periods){epiSelectedPeriod='28';periodSelect.value='28';}
+    Array.from(periodSelect.options).forEach(option=>{option.disabled=isBackend&&(!data.periods||!data.periods[option.value]);});
+  }
+  const banner=document.querySelector('.epi-demo-banner');
+  if(banner){
+    const demo=data.source!=='backend';
+    banner.innerHTML='<span class="epi-demo-badge">'+(demo?'DEMO DATA':'AGGREGATED DATA')+'</span><span>'+escapeEpiHtml(demo?'All counts and hotspot points are illustrative. The map uses approximate sample locations, not verified barangay boundaries or live surveillance data.':'Data as of '+(data.asOf||'timestamp unavailable')+'. Aggregate signals only; verify definitions and reporting completeness before action.')+'</span>';
+  }
+  renderEpiAlerts(data.alerts||[]);
+}
+function renderEpiAlerts(alerts){
+  const list=document.querySelector('.epi-alert-list'), count=document.querySelector('.epi-alert-count');
+  if(!list) return;
+  if(count) count.textContent=alerts.length;
+  list.innerHTML=alerts.length?alerts.map(a=>{
+    const level=a.level==='high'?'high':'watch';
+    return '<button type="button" class="epi-alert-row" data-epi-barangay="'+escapeEpiHtml(a.barangay)+'"><span class="epi-alert-level '+(level==='high'?'epi-level-high':'epi-level-watch')+'"></span><span class="epi-alert-copy"><b>'+escapeEpiHtml(a.condition)+'</b><small>'+escapeEpiHtml(a.barangay)+' · '+escapeEpiHtml(a.count)+' reports</small><small class="epi-alert-detail">'+escapeEpiHtml(a.note||'Review line list and verify signal')+'</small></span><span class="epi-alert-arrow">↗</span></button>';
+  }).join(''):'<div class="epi-alert-footer">No priority signals are present in this reporting window. Confirm reporting completeness before interpreting this as no cases.</div>';
+  list.querySelectorAll('[data-epi-barangay]').forEach(el=>el.addEventListener('click',()=>focusEpiPoint(el.dataset.epiBarangay)));
+}
+function initEpiMap(){
+  const el=document.getElementById('epi-map');
+  if(!el || typeof L==='undefined') return;
+  if(!epiMapInstance){
+    epiMapInstance=L.map(el,{scrollWheelZoom:false}).setView([8.948,125.542],12);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(epiMapInstance);
+  }
+  renderEpiMap(document.getElementById('epi-disease-layer')?.value||'all');
+  setTimeout(()=>epiMapInstance.invalidateSize(),120);
+}
+function renderEpiMap(condition){
+  if(!epiMapInstance) return;
+  epiMapMarkers.forEach(m=>epiMapInstance.removeLayer(m)); epiMapMarkers=[];
+  const data=epiDashboardData();
+  data.points.forEach(p=>{
+    const value=condition==='all'?Object.values(p.cases||{}).reduce((a,b)=>a+Number(b||0),0):Number((p.cases||{})[condition]||0);
+    if(condition!=='all'&&value===0) return;
+    const level=p.level||'normal', color=level==='high'?'#dc4545':level==='watch'?'#e4a23b':'#2e9d83';
+    const marker=L.circleMarker([p.lat,p.lng],{radius:Math.min(15,7+Math.sqrt(value)*1.2),color:'#fff',weight:2,fillColor:color,fillOpacity:.88});
+    const label=condition==='all'?'All monitored conditions':condition;
+    marker.bindPopup('<div class="epi-popup-title">'+escapeEpiHtml(p.barangay||'Barangay')+'</div><div><b>'+escapeEpiHtml(label)+':</b> '+escapeEpiHtml(value)+' reported signal(s)</div><div class="epi-popup-meta">'+(data.source!=='backend'?'Illustrative sample point · verify before use':'Aggregate surveillance data · check source and reporting date')+'</div>');
+    marker.addTo(epiMapInstance); marker.__epiBarangay=p.barangay; epiMapMarkers.push(marker);
+  });
+}
+function filterEpiMap(condition){renderEpiMap(condition);}
+function focusEpiPoint(name){
+  if(!epiMapInstance) initEpiMap();
+  const marker=epiMapMarkers.find(m=>m.__epiBarangay===name);
+  if(marker){epiMapInstance.setView(marker.getLatLng(),14,{animate:true});marker.openPopup();}
+}
+function updateEpiPeriod(days){
+  epiSelectedPeriod=String(days);
+  renderEpiDashboard();
+  renderEpiMap(document.getElementById('epi-disease-layer')?.value||'all');
+  if(morbInst2){morbInst2.destroy();morbInst2=null;}
+  initMorbChart2();
+}
+window.addEventListener('load',()=>{renderEpiDashboard();initEpiMap(); if(typeof initMorbChart2==='function') initMorbChart2();});
 // init date on dashboard
 (function(){
   const el=document.getElementById('dash-date');
@@ -299,6 +413,62 @@ select.f-i{cursor:pointer}
 .tbar{height:5px;background:var(--slate-100);border-radius:3px;overflow:hidden;margin-top:4px;}
 .tbar-fill{height:100%;border-radius:3px;background:var(--green-700);}
 
+
+/* Epidemiology-first home dashboard */
+.epi-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:14px}
+.epi-eyebrow{display:flex;align-items:center;gap:7px;font-size:9px;font-weight:600;letter-spacing:1.2px;color:var(--teal);margin-bottom:7px}
+.epi-live-dot{width:7px;height:7px;border-radius:50%;background:#2e9d83;box-shadow:0 0 0 3px rgba(46,157,131,.13)}
+.epi-title{font-size:25px;font-weight:600;letter-spacing:-.7px;color:var(--ink);line-height:1.2}
+.epi-sub{font-size:11px;color:var(--ink3);margin-top:5px}
+.epi-hero-actions{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.epi-filter-label{display:block;font-size:10px;color:var(--ink3);margin-bottom:5px}
+.epi-select{min-width:130px}
+.epi-demo-banner{display:flex;align-items:center;gap:9px;background:#fff8e6;border:1px solid #f1dfae;color:#71591b;border-radius:7px;padding:9px 12px;font-size:10px;line-height:1.45;margin-bottom:14px}
+.epi-demo-badge{flex-shrink:0;font-size:9px;font-weight:700;letter-spacing:.5px;background:#f5e6bd;color:#72520c;border-radius:4px;padding:4px 6px}
+.epi-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.epi-kpi{background:var(--surf);border:1px solid var(--line);border-radius:9px;padding:14px 15px;min-width:0;box-shadow:0 1px 2px rgba(16,24,40,.025)}
+.epi-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--ink3);font-size:11px;font-weight:500}
+.epi-kpi-icon{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;font-size:15px;font-weight:600}
+.epi-blue{background:#e8f1ff;color:#245db4}.epi-red{background:#fff0ee;color:#c63d37}.epi-amber{background:#fff4df;color:#9a6700}.epi-green{background:#e7f7f0;color:#19785e}
+.epi-kpi-value{font-size:27px;line-height:1.2;font-weight:600;letter-spacing:-.7px;margin:10px 0 8px;color:var(--ink)}
+.epi-kpi-value small{font-size:13px;letter-spacing:0;color:var(--ink3);font-weight:500}
+.epi-kpi-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:16px;font-size:10px}
+.epi-muted{color:var(--ink3)}
+.epi-status{font-size:9px;font-weight:600;border-radius:4px;padding:3px 5px}.epi-status-red{background:#fff0ee;color:#b93232}
+.epi-progress{height:4px;background:#e9edf2;border-radius:8px;overflow:hidden;margin-top:9px}.epi-progress span{display:block;height:100%;background:#2e9d83;border-radius:8px}
+.epi-main-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:14px;margin-bottom:14px;align-items:stretch}
+.epi-map-panel,.epi-alert-panel{min-width:0}
+.epi-panel-head{gap:12px;align-items:center}
+.epi-panel-sub{font-size:10px;color:var(--ink3);margin-top:4px}
+.epi-map-controls{display:flex;align-items:center;gap:7px;white-space:nowrap}.epi-map-controls label{font-size:10px;color:var(--ink3)}.epi-map-controls select{max-width:140px;padding:6px 8px}
+#epi-map{height:335px;width:100%;background:#edf2f3;z-index:1}
+.epi-map-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 13px;border-top:1px solid var(--line);font-size:9px;color:var(--ink2)}
+.epi-map-legend span{display:inline-flex;align-items:center;gap:5px}.epi-legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.epi-map-source{margin-left:auto;color:var(--ink3);font-style:italic}
+.epi-alert-count{display:inline-flex;align-items:center;justify-content:center;min-width:23px;height:23px;padding:0 6px;border-radius:7px;background:#fff0ee;color:#b93232;font-size:10px;font-weight:700}
+.epi-alert-list{padding:0 12px}
+.epi-alert-row{display:flex;width:100%;align-items:flex-start;gap:10px;text-align:left;border:0;border-bottom:1px solid #edf0f4;background:transparent;padding:14px 2px;cursor:pointer;color:inherit}
+.epi-alert-row:hover{background:#fafbfc}
+.epi-alert-level{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0}.epi-level-high{background:#dc4545;box-shadow:0 0 0 3px #ffeded}.epi-level-watch{background:#e4a23b;box-shadow:0 0 0 3px #fff4df}
+.epi-alert-copy{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}.epi-alert-copy b{font-size:11px;font-weight:600}.epi-alert-copy small{font-size:10px;color:var(--ink3);line-height:1.35}.epi-alert-copy .epi-alert-detail{font-size:9px;color:var(--ink2)}
+.epi-alert-arrow{font-size:14px;color:var(--ink3);padding:1px 2px}
+.epi-alert-footer{padding:11px 14px;display:flex;flex-direction:column;gap:8px;font-size:9px;line-height:1.45;color:var(--ink3);background:#fafbfc;border-radius:0 0 8px 8px}
+.epi-alert-footer .panel-action{align-self:flex-start}
+.epi-bottom-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;margin-bottom:14px}
+.epi-chart-wrap{height:210px;position:relative}
+.epi-trend-body{padding:12px 14px}
+.epi-followup-list{padding:0 14px}
+.epi-followup{display:flex;align-items:flex-start;gap:10px;padding:13px 0;border-bottom:1px solid #edf0f4}.epi-followup:last-child{border-bottom:0}
+.epi-followup-num{display:flex;align-items:center;justify-content:center;width:25px;height:25px;flex-shrink:0;border-radius:7px;background:#edf3f8;color:#496174;font-size:9px;font-weight:600}
+.epi-followup>div{flex:1;min-width:0}.epi-followup b{display:block;font-size:10px;font-weight:600;margin:2px 0 4px}.epi-followup small{display:block;color:var(--ink3);font-size:9px;line-height:1.5}
+.epi-followup-tag{font-size:9px;white-space:nowrap;color:#26785e;background:#e7f7f0;padding:3px 5px;border-radius:4px}.epi-tag-amber{background:#fff4df;color:#94630b}
+.epi-data-note{display:flex;align-items:flex-start;gap:9px;padding:11px 12px;border:1px solid #d8e5f0;background:#f3f8fc;border-radius:7px;color:#435b6c;font-size:10px;line-height:1.55;margin-bottom:16px}
+.epi-info-mark{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:17px;height:17px;border-radius:50%;border:1px solid #9cb5c7;font-size:10px;font-weight:600}
+.epi-legacy-bottom{margin-top:6px}
+.leaflet-popup-content-wrapper{border-radius:7px!important}.leaflet-popup-content{font:11px/1.5 'IBM Plex Sans',sans-serif;margin:10px 12px!important}.epi-popup-title{font-weight:600;font-size:12px;margin-bottom:4px}.epi-popup-meta{color:#65758b}
+@media(max-width:1150px){.epi-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.epi-main-grid{grid-template-columns:minmax(0,1.3fr) minmax(260px,1fr)}}
+@media(max-width:900px){.epi-main-grid,.epi-bottom-grid{grid-template-columns:1fr}.epi-hero{align-items:flex-start;flex-direction:column}.epi-hero-actions{width:100%}.epi-map-source{margin-left:0}}
+@media(max-width:560px){.epi-kpis{grid-template-columns:1fr 1fr;gap:8px}.epi-kpi{padding:11px}.epi-kpi-value{font-size:23px}#epi-map{height:290px}.epi-map-controls{width:100%;justify-content:space-between}.epi-map-controls select{flex:1}.epi-hero-actions{align-items:flex-end}.epi-title{font-size:22px}.epi-demo-banner{align-items:flex-start}.epi-map-legend{gap:8px}}
 </style>
 </head>
 <body>
@@ -309,7 +479,7 @@ select.f-i{cursor:pointer}
     <div class="sb-sub">PDF Reports Engine · jsPDF</div>
   </div>
   <div class="sb-sec">PDF Reports (23)</div>
-  <div class="sb-item active" data-pg="reports" onclick="go(this,'reports')"><span class="sb-ic">📄</span>All Reports</div>
+  <div class="sb-item" data-pg="reports" onclick="go(this,'reports')"><span class="sb-ic">📄</span>All Reports</div>
   <div class="sb-item" data-pg="daily-service" onclick="go(this,'daily-service')"><span class="sb-ic">📊</span>Daily Service Report</div>
   <div class="sb-item" data-pg="morbidity" onclick="go(this,'morbidity')"><span class="sb-ic">🦠</span>Morbidity (FHSIS)</div>
   <div class="sb-item" data-pg="epi-weekly" onclick="go(this,'epi-weekly')"><span class="sb-ic">📈</span>Epi Weekly Monitoring</div>
@@ -335,7 +505,7 @@ select.f-i{cursor:pointer}
   <!-- ══ CLINICAL ══════════════════════════════════════════════ -->
   <div class="sb-divider" style="height:1px;background:rgba(255,255,255,.07);margin:6px 0;"></div>
   <div class="sb-section2" style="padding:8px 14px 3px;font-size:9px;font-weight:600;color:rgba(255,255,255,.25);letter-spacing:.7px;text-transform:uppercase;">Clinical</div>
-  <div class="sb-item" data-pg2="dashboard" onclick="clinNav(this,'dashboard')">◫ Dashboard</div>
+  <div class="sb-item active" data-pg2="dashboard" onclick="clinNav(this,'dashboard')">◫ Dashboard</div>
   <div class="sb-item" data-pg2="queue" onclick="clinNav(this,'queue')">⏱ Queue <span style="margin-left:auto;background:#da3633;color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;font-weight:600;">5</span></div>
   <div class="sb-item" data-pg2="patients" onclick="clinNav(this,'patients')">👤 Patients</div>
   <a class="sb-item" href="/pilot/" style="display:flex;align-items:center;text-decoration:none;color:inherit;">🩺 Patient Care Workspace</a>
@@ -368,13 +538,13 @@ select.f-i{cursor:pointer}
 
 <div class="main">
 <header class="topbar">
-  <div class="tbt" id="tbt">PDF Reports Engine</div>
-  <span style="font-size:11.5px;color:var(--ink3)">jsPDF 2.5 + autoTable · 23 reports · real PDF download</span>
+  <div class="tbt" id="tbt">Epidemiology Overview</div>
+  <span style="font-size:11.5px;color:var(--ink3)">Community Health Intelligence · Surveillance overview</span>
 </header>
 <main class="content">
 
 <!-- ══ ALL REPORTS ══════════════════════════════════════════════ -->
-<div id="page-reports" class="page active">
+<div id="page-reports" class="page">
   <div class="ph">
     <div><div class="pg-t">PDF Reports Engine</div>
       <div class="pg-s">All 23 FPDF reports from chits_query/pdf_reports/ — modernized to jsPDF with real PDF download</div>
@@ -927,99 +1097,81 @@ select.f-i{cursor:pointer}
 
 
 <!-- ══ CLINICAL PAGES ═══════════════════════════════════════════ -->
-<div id="page-dashboard" class="page">
+<div id="page-dashboard" class="page active">
 
-  <div class="ph">
-    <div class="ph-left">
-      <div class="pg-title">Good morning, Dr. Reyes</div>
-      <div class="pg-sub" id="dash-date">RHU Butuan City — loading date…</div>
+  <div class="epi-hero">
+    <div>
+      <div class="epi-eyebrow"><span class="epi-live-dot"></span> COMMUNITY HEALTH INTELLIGENCE</div>
+      <div class="epi-title">Epidemiology overview</div>
+      <div class="epi-sub" id="dash-date">RHU Butuan City · Surveillance overview</div>
     </div>
-    <div class="btns">
-      <button class="btn btn-default btn-sm" onclick="openModal('new-patient')">+ New Patient</button>
-      <button class="btn btn-primary btn-sm" onclick="openModal('new-consult-quick')">+ Start Consult</button>
+    <div class="epi-hero-actions">
+      <label class="epi-filter-label" for="epi-period">Reporting period</label>
+      <select id="epi-period" class="f-input epi-select" onchange="updateEpiPeriod(this.value)">
+        <option value="7">Last 7 days</option><option value="28" selected>Last 28 days</option><option value="90">Last 90 days</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="openModal('new-notif')">＋ Report case</button>
     </div>
   </div>
 
-  <div class="sg">
-    <div class="sc c-green"><div class="sc-label">Patients this month</div><div class="sc-val" id="d-total">1,847</div><div class="sc-note"><span class="sc-up">↑ 12%</span> vs last month</div></div>
-    <div class="sc c-amber"><div class="sc-label">Active TB cases</div><div class="sc-val">38</div><div class="sc-note"><span class="sc-down">−5</span> vs last quarter</div></div>
-    <div class="sc c-red"><div class="sc-label">Disease alerts</div><div class="sc-val">6</div><div class="sc-note"><span class="sc-warn">2 new</span> this week</div></div>
-    <div class="sc c-blue"><div class="sc-label">Registered families</div><div class="sc-val">3,214</div><div class="sc-note"><span class="sc-up">+48</span> this month</div></div>
+  <div class="epi-demo-banner"><span class="epi-demo-badge">DEMO DATA</span><span>All counts and hotspot points are illustrative. The map uses approximate sample locations, not verified barangay boundaries or live surveillance data.</span></div>
+
+  <div class="epi-kpis">
+    <div class="epi-kpi"><div class="epi-kpi-top"><span>New cases</span><span class="epi-kpi-icon epi-blue">↗</span></div><div class="epi-kpi-value" id="epi-kpi-cases">31</div><div class="epi-kpi-foot"><span class="epi-muted">Across monitored conditions</span></div></div>
+    <div class="epi-kpi"><div class="epi-kpi-top"><span>Priority alerts</span><span class="epi-kpi-icon epi-red">!</span></div><div class="epi-kpi-value" id="epi-kpi-alerts">3</div><div class="epi-kpi-foot"><span class="epi-status epi-status-red">2 above threshold</span><span class="epi-muted">Requires review</span></div></div>
+    <div class="epi-kpi"><div class="epi-kpi-top"><span>Barangays with signals</span><span class="epi-kpi-icon epi-amber">⌖</span></div><div class="epi-kpi-value" id="epi-kpi-barangays">4 <small>/ 9</small></div><div class="epi-kpi-foot"><span class="epi-muted">At least one monitored signal</span></div></div>
+    <div class="epi-kpi"><div class="epi-kpi-top"><span>Reporting completeness</span><span class="epi-kpi-icon epi-green">✓</span></div><div class="epi-kpi-value" id="epi-kpi-completeness">89<small>%</small></div><div class="epi-kpi-foot"><span class="epi-muted">8 of 9 barangays submitted</span></div><div class="epi-progress"><span style="width:89%"></span></div></div>
   </div>
 
-  <div class="grid-chart mb-16">
-    <div class="panel">
-      <div class="panel-head"><div class="panel-title">Morbidity trend — 12 weeks</div>
-        <button class="panel-action" onclick="goTo(null,'epi')">Full report →</button>
+  <div class="epi-main-grid">
+    <section class="panel epi-map-panel">
+      <div class="panel-head epi-panel-head">
+        <div><div class="panel-title">Geographic surveillance</div><div class="epi-panel-sub">Butuan City · Barangay-level signals</div></div>
+        <div class="epi-map-controls"><label for="epi-disease-layer">Condition</label><select id="epi-disease-layer" class="f-input" onchange="filterEpiMap(this.value)"><option value="all">All signals</option><option value="Dengue">Dengue</option><option value="Diarrhea">Acute diarrhea</option><option value="ARI">Acute respiratory infection</option><option value="TB">TB</option></select></div>
       </div>
-      <div class="panel-body"><canvas id="morbChart" height="170"></canvas></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><div class="panel-title">Active alerts</div>
-        <button class="panel-action" onclick="goTo(null,'notifiable')">All →</button>
+      <div id="epi-map" aria-label="Illustrative epidemiological surveillance map of Butuan City"></div>
+      <div class="epi-map-legend"><span><i class="epi-legend-dot" style="background:#dc4545"></i>Priority signal</span><span><i class="epi-legend-dot" style="background:#e4a23b"></i>Watch</span><span><i class="epi-legend-dot" style="background:#2e9d83"></i>Within expected range</span><span class="epi-map-source">Illustrative points · not for response decisions</span></div>
+    </section>
+
+    <section class="panel epi-alert-panel">
+      <div class="panel-head"><div><div class="panel-title">Signals to review</div><div class="epi-panel-sub">Sorted by review priority</div></div><span class="epi-alert-count">3</span></div>
+      <div class="epi-alert-list">
+        <button class="epi-alert-row" onclick="focusEpiPoint('Brgy. 3')"><span class="epi-alert-level epi-level-high"></span><span class="epi-alert-copy"><b>Dengue</b><small>Brgy. 3 · 14 suspected cases</small><small class="epi-alert-detail">Above illustrative threshold · verify onset dates</small></span><span class="epi-alert-arrow">↗</span></button>
+        <button class="epi-alert-row" onclick="focusEpiPoint('Brgy. 7')"><span class="epi-alert-level epi-level-watch"></span><span class="epi-alert-copy"><b>Acute diarrhea</b><small>Brgy. 7 · 8 reports</small><small class="epi-alert-detail">Rising signal · assess shared exposures</small></span><span class="epi-alert-arrow">↗</span></button>
+        <button class="epi-alert-row" onclick="focusEpiPoint('Brgy. 9')"><span class="epi-alert-level epi-level-watch"></span><span class="epi-alert-copy"><b>Acute diarrhea</b><small>Brgy. 9 · 5 reports</small><small class="epi-alert-detail">Check clustering and reporting completeness</small></span><span class="epi-alert-arrow">↗</span></button>
       </div>
-      <div class="panel-body alert-list">
-        <div class="al-item"><div class="al-dot" style="background:var(--red-700)"></div><div class="al-info"><div class="al-name">Dengue Fever</div><div class="al-sub">Brgy. 3 · threshold ×1.4</div></div><div class="al-count">14</div></div>
-        <div class="al-item"><div class="al-dot" style="background:var(--amber-700)"></div><div class="al-info"><div class="al-name">Diarrheas</div><div class="al-sub">Brgy. 7, 9 · rising</div></div><div class="al-count">8</div></div>
-        <div class="al-item"><div class="al-dot" style="background:var(--amber-700)"></div><div class="al-info"><div class="al-name">Pneumonia</div><div class="al-sub">Under-5 cluster</div></div><div class="al-count">6</div></div>
-        <div class="al-item"><div class="al-dot" style="background:var(--blue-700)"></div><div class="al-info"><div class="al-name">Hypertension</div><div class="al-sub">Monthly monitoring</div></div><div class="al-count">91</div></div>
-        <div class="al-item"><div class="al-dot" style="background:var(--teal-700)"></div><div class="al-info"><div class="al-name">Chicken Pox</div><div class="al-sub">School-age cluster</div></div><div class="al-count">3</div></div>
-      </div>
-    </div>
+      <div class="epi-alert-footer"><span>Signals are prompts for epidemiologic verification, not confirmed outbreaks.</span><button class="panel-action" onclick="clinNav(null,'notifiable')">Review register →</button></div>
+    </section>
   </div>
 
-  <div class="grid-2">
-    <div class="panel">
-      <div class="panel-head"><div class="panel-title">Today's queue</div>
-        <button class="panel-action" onclick="goTo(null,'queue')">See all →</button>
+  <div class="epi-bottom-grid">
+    <section class="panel">
+      <div class="panel-head"><div><div class="panel-title">Weekly case trend</div><div class="epi-panel-sub">Selected priority conditions · counts by epidemiologic week</div></div><button class="panel-action" onclick="clinNav(null,'epi')">Open reports →</button></div>
+      <div class="panel-body epi-trend-body"><div class="epi-chart-wrap"><canvas id="morbChart" height="125"></canvas></div></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div><div class="panel-title">Surveillance follow-up</div><div class="epi-panel-sub">Suggested operational checks</div></div></div>
+      <div class="epi-followup-list">
+        <div class="epi-followup"><span class="epi-followup-num">01</span><div><b>Verify alert line list</b><small>Check onset date, residence, case definition and duplicates.</small></div><span class="epi-followup-tag">Today</span></div>
+        <div class="epi-followup"><span class="epi-followup-num">02</span><div><b>Contact non-reporting barangay</b><small>Confirm whether a zero report or submission is missing.</small></div><span class="epi-followup-tag epi-tag-amber">Pending</span></div>
+        <div class="epi-followup"><span class="epi-followup-num">03</span><div><b>Document field verification</b><small>Record investigation status, actions, owner and next review.</small></div><span class="epi-followup-tag">Open</span></div>
       </div>
-      <div class="panel-body-0">
-        <div class="queue-item" onclick="openPatientRecord('santos')">
-          <div class="q-num">01</div><div class="q-ava">MS</div>
-          <div class="q-info"><div class="q-name">Santos, Maria T.</div><div class="q-sub">Fever, cough · Brgy 3</div></div>
-          <span class="tag tag-green">Done</span>
-        </div>
-        <div class="queue-item"><div class="q-num">02</div><div class="q-ava">JD</div>
-          <div class="q-info"><div class="q-name">Dela Cruz, Juan P.</div><div class="q-sub">HPN follow-up · Brgy 7</div></div>
-          <span class="tag tag-green">Done</span>
-        </div>
-        <div class="queue-item"><div class="q-num">03</div><div class="q-ava">AR</div>
-          <div class="q-info"><div class="q-name">Reyes, Ana L.</div><div class="q-sub">Prenatal · Brgy 1</div></div>
-          <span class="tag tag-amber">Waiting</span>
-        </div>
-        <div class="queue-item"><div class="q-num">04</div><div class="q-ava">RT</div>
-          <div class="q-info"><div class="q-name">Tan, Rosa G.</div><div class="q-sub">FP counseling · Brgy 5</div></div>
-          <span class="tag tag-amber">Waiting</span>
-        </div>
-        <div class="queue-item"><div class="q-num">05</div><div class="q-ava">CV</div>
-          <div class="q-info"><div class="q-name">Villanueva, Carlos J.</div><div class="q-sub">TB follow-up · Brgy 2</div></div>
-          <span class="tag tag-grey">Expected</span>
-        </div>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><div class="panel-title">Appointments today</div>
-        <button class="panel-action" onclick="goTo(null,'appointments')">All →</button>
-      </div>
-      <div class="panel-body-0">
-        <div class="queue-item"><div class="q-num">1</div><div class="q-ava">AL</div>
-          <div class="q-info"><div class="q-name">Lim, Ana M.</div><div class="q-sub">Prenatal · 08:00</div></div>
-          <span class="tag tag-teal">Prenatal</span>
-        </div>
-        <div class="queue-item"><div class="q-num">2</div><div class="q-ava">BF</div>
-          <div class="q-info"><div class="q-name">Flores, Ben M.</div><div class="q-sub">Immunization · 09:00</div></div>
-          <span class="tag tag-blue">Vaccine</span>
-        </div>
-        <div class="queue-item"><div class="q-num">3</div><div class="q-ava">CM</div>
-          <div class="q-info"><div class="q-name">Mendoza, Joel B.</div><div class="q-sub">NTP Intensive · 10:00</div></div>
-          <span class="tag tag-amber">DOTS</span>
-        </div>
-        <div class="queue-item"><div class="q-num">4</div><div class="q-ava">DG</div>
-          <div class="q-info"><div class="q-name">Gomez, Mia C.</div><div class="q-sub">Postpartum · 11:00</div></div>
-          <span class="tag tag-purple">Postp.</span>
-        </div>
-      </div>
-    </div>
+    </section>
+  </div>
+
+  <div class="epi-data-note"><span class="epi-info-mark">i</span><span><b>For operational use:</b> connect this view to validated case line lists, official barangay boundaries, population denominators, configured alert thresholds, and timestamped reporting completeness. Apply role-based access and aggregate map displays to protect patient confidentiality.</span></div>
+
+  <div class="grid-2 epi-legacy-bottom">
+    <div class="panel"><div class="panel-head"><div class="panel-title">Today's queue</div><button class="panel-action" onclick="goTo(null,'queue')">See all →</button></div><div class="panel-body-0">
+      <div class="queue-item" onclick="openPatientRecord('santos')"><div class="q-num">01</div><div class="q-ava">MS</div><div class="q-info"><div class="q-name">Santos, Maria T.</div><div class="q-sub">Fever, cough · Brgy 3</div></div><span class="tag tag-green">Done</span></div>
+      <div class="queue-item"><div class="q-num">02</div><div class="q-ava">JD</div><div class="q-info"><div class="q-name">Dela Cruz, Juan P.</div><div class="q-sub">HPN follow-up · Brgy 7</div></div><span class="tag tag-green">Done</span></div>
+      <div class="queue-item"><div class="q-num">03</div><div class="q-ava">AR</div><div class="q-info"><div class="q-name">Reyes, Ana L.</div><div class="q-sub">Prenatal · Brgy 1</div></div><span class="tag tag-amber">Waiting</span></div>
+    </div></div>
+    <div class="panel"><div class="panel-head"><div class="panel-title">Appointments today</div><button class="panel-action" onclick="goTo(null,'appointments')">All →</button></div><div class="panel-body-0">
+      <div class="queue-item"><div class="q-num">1</div><div class="q-ava">AL</div><div class="q-info"><div class="q-name">Lim, Ana M.</div><div class="q-sub">Prenatal · 08:00</div></div><span class="tag tag-teal">Prenatal</span></div>
+      <div class="queue-item"><div class="q-num">2</div><div class="q-ava">BF</div><div class="q-info"><div class="q-name">Flores, Ben M.</div><div class="q-sub">Immunization · 09:00</div></div><span class="tag tag-blue">Vaccine</span></div>
+      <div class="queue-item"><div class="q-num">3</div><div class="q-ava">CM</div><div class="q-info"><div class="q-name">Mendoza, Joel B.</div><div class="q-sub">TB follow-up · 10:00</div></div><span class="tag tag-amber">DOTS</span></div>
+    </div></div>
   </div>
 </div>
 

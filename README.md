@@ -16,9 +16,17 @@ The repository now has a shared local PHP entry point linking the original demo 
 
 The pilot smoke test checks PHP/JavaScript syntax and exercises login, CSRF protection, patient creation, consultation creation/history, invalid vital-sign rejection, and logout using fictional data. This is not a security audit, clinical validation, or production-readiness certification.
 
+## Browser demo (GitHub Pages)
+
+The repository includes a static GitHub Pages build of the dashboard so reviewers can open it in a browser without installing PHP, Docker, or a database. It routes patient and consultation navigation to the existing **illustrative mock screens**, not the PHP API. All displayed records are synthetic examples; interactions are not persisted to a server.
+
+Expected URL after the Pages workflow is enabled and changes are merged to `main`: https://mdfl212.github.io/chits-modern/
+
+GitHub Pages cannot run PHP. The persistent PHP/SQLite pilot remains a separate local development path; see [docs/DEMO.md](docs/DEMO.md) for both options. Do not enter real patient information or use the browser mock for care or official reporting.
+
 ## Existing prototype
 
-The root index.html is designed to open directly in a browser for UI demonstrations. It includes a CHITS-inspired dashboard, clinical and public-health program screens, charts, and client-side PDF examples.
+The root index.html opens to an epidemiology-first home dashboard with surveillance KPIs, an interactive map, priority signals, and weekly trends, alongside clinical and public-health program screens and client-side PDF examples. The map and dashboard counts in the public demo are synthetic; approximate points are not official barangay boundaries or live surveillance.
 
 Some screens, records, reports, and actions are illustrative. A displayed button or generated PDF does not imply that a corresponding backend record was saved or that a report has been validated for official use.
 
@@ -31,6 +39,8 @@ python3 -m http.server 8000
 ~~~
 
 Then visit http://127.0.0.1:8000/. This serves the demo UI only; it does not enable the separate PHP pilot's database or authentication.
+
+See [the epidemiology dashboard data contract](docs/EPIDEMIOLOGY-DASHBOARD.md) for the planned aggregate-data interface and safeguards required before operational use.
 
 ## Patient-to-consultation pilot
 
@@ -51,7 +61,7 @@ The isolated pilot is under pilot/. It currently supports:
 
 ### Install and run locally
 
-See **[Pilot installation and testing guide](docs/INSTALLATION.md)** or [pilot/README.md](pilot/README.md).
+See the **[local demo quick start](docs/DEMO.md)**, **[pilot installation and testing guide](docs/INSTALLATION.md)**, or [pilot/README.md](pilot/README.md).
 
 Quick start on Linux/macOS, from the repository root:
 
@@ -120,7 +130,7 @@ This project is **not ready for production clinical use**. Work still required i
 - Accessibility/usability testing with intended users and a supervised RHU pilot
 - Deployment architecture review; the pilot's SQLite setup is for initial local development, not a recommendation for multi-user production hosting
 
-A successful automated smoke test only shows that the tested paths worked in that test environment. It does not establish that the system is safe, legally compliant, clinically valid, or production-ready.
+A successful automated smoke test only shows that the tested paths worked in that test environment. It does not establish that the system is safe, legally compliant, clinically valid, or production-ready. The supported demonstration setup is local-only; see [docs/DEMO.md](docs/DEMO.md).
 
 ## Credits and licensing
 

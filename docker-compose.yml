@@ -1,0 +1,15 @@
+services:
+  chits-demo:
+    build:
+      context: .
+      dockerfile: deploy/demo/Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      CHITS_DB_PATH: /data/chits.sqlite
+    volumes:
+      - chits-demo-data:/data
+    restart: unless-stopped
+
+volumes:
+  chits-demo-data:
