@@ -6,5 +6,6 @@ WORKDIR /app
 COPY . /app
 ENV CHITS_DB_PATH=/data/chits.sqlite
 RUN mkdir -p /data && chown -R www-data:www-data /data
+USER www-data
 EXPOSE 8080
 CMD ["php", "-S", "0.0.0.0:8080", "-t", "/app", "/app/pilot/router.php"]
